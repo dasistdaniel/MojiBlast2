@@ -263,10 +263,24 @@ const lights = Array.from({ length: 60 }, (_, i) => {
 });
 // Karussell, Riesenrad & Co. ziehen langsam am Horizont vorbei
 const props = [
-  { emoji: '🎡', x: 700, y: 400, size: 150, speed: 7 },
-  { emoji: '🎠', x: 280, y: 440, size: 100, speed: 10 },
-  { emoji: '🎪', x: 1000, y: 430, size: 120, speed: 8 },
+  { emoji: '🎢', x: 420, y: 420, size: 130, speed: 4, alpha: 0.4 },       // fern
+  { emoji: '🏰', x: 880, y: 440, size: 90, speed: 5, alpha: 0.4 },
+  { emoji: '🎡', x: 700, y: 400, size: 150, speed: 7, alpha: 0.8 },
+  { emoji: '🎠', x: 280, y: 440, size: 100, speed: 10, alpha: 0.8 },
+  { emoji: '🎪', x: 1000, y: 430, size: 120, speed: 8, alpha: 0.8 },
 ];
+// Buden am Tresen, ziehen etwas schneller vorbei
+const stalls = [
+  { emoji: '🍭', x: 120, speed: 14 }, { emoji: '🍿', x: 360, speed: 14 }, { emoji: '🎯', x: 610, speed: 14 },
+  { emoji: '🍭', x: 850, speed: 14 }, { emoji: '🍿', x: 1090, speed: 14 },
+];
+// Kleine Ballons steigen im Hintergrund auf, ab und zu fliegt ein Vogel vorbei und es gibt Feuerwerk
+const newBgBalloon = anywhere => ({ x: rand(30, W - 30), y: anywhere ? rand(0, H) : H + 40, r: rand(9, 17), vy: 10 + Math.random() * 14, ph: Math.random() * 6.28, c: pick(BALLOON_COLORS) });
+const bgBalloons = Array.from({ length: 10 }, () => newBgBalloon(true));
+const birds = [];
+let birdTimer = 4;
+const fireworks = [];
+let fireworkTimer = 3;
 const clouds = [
   { x: 150, y: 150, size: 80, speed: 5 }, { x: 560, y: 90, size: 60, speed: 4 }, { x: 860, y: 230, size: 70, speed: 6 },
 ];
@@ -542,6 +556,30 @@ function update(dt) {
     c.x -= c.speed * dt;
     if (c.x < -c.size) { c.x = W + c.size; c.y = rand(70, 260); }
   }
+  for (const st of stalls) {
+    st.x -= st.speed * dt;
+    if (st.x < -60) st.x = W + 60;
+  }
+  for (const b of bgBalloons) {
+    b.y -= b.vy * dt;
+    b.x += Math.sin(G.time * 0.8 + b.ph) * 8 * dt;
+    if (b.y < -50) Object.assign(b, newBgBalloon(false));
+  }
+  birdTimer -= dt;
+  if (birdTimer <= 0) { birds.push({ x: W + 40, y: rand(70, 230), vx: 40 + Math.random() * 30, t: 0 }); birdTimer = 7 + Math.random() * 8; }
+  for (const b of birds) { b.t += dt; b.x -= b.vx * dt; }
+  while (birds.length && birds[0].x < -50) birds.shift();
+  fireworkTimer -= dt;
+  if (fireworkTimer <= 0) {
+    const cx = rand(120, W - 120), cy = rand(120, 260), color = pick(CONFETTI), n = 24;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2, v = 70 + Math.random() * 50;
+      fireworks.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1.5, max: 1.5, color });
+    }
+    fireworkTimer = 6 + Math.random() * 7;
+  }
+  for (const f of fireworks) { f.x += f.vx * dt; f.y += f.vy * dt; f.vx *= 0.97; f.vy = f.vy * 0.97 + 30 * dt; f.life -= dt; }
+  while (fireworks.length && fireworks[0].life <= 0) fireworks.shift();
   if (G.state !== 'play') return;
 
   const h = G.hero;
@@ -743,7 +781,31 @@ function drawBackground() {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
   for (const c of clouds) emoji('☁️', c.x, c.y, c.size, 0.45);
-  for (const p of props) emoji(p.emoji, p.x, p.y, p.size, 0.8);
+  for (const f of fireworks) {
+    ctx.globalAlpha = Math.max(0, f.life / f.max) * 0.75;
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 3.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (const p of props) emoji(p.emoji, p.x, p.y, p.size, p.alpha);
+  // aufsteigende Hintergrund-Ballons
+  for (const b of bgBalloons) {
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y + b.r * 1.25);
+    ctx.lineTo(b.x + Math.sin(G.time + b.ph) * 3, b.y + b.r * 3.2);
+    ctx.stroke();
+    ctx.fillStyle = b.c.base;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, b.r, b.r * 1.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  for (const b of birds) emoji('🐦', b.x, b.y + Math.sin(b.t * 4) * 7, 26, 0.65);
   for (const s of lights) {
     ctx.globalAlpha = 0.25 + s.layer * 0.12;
     ctx.fillStyle = '#fff7d6';
@@ -758,6 +820,7 @@ function drawBackground() {
   ctx.fillRect(0, 512, W, 28);
   ctx.fillStyle = '#c47a45';
   ctx.fillRect(0, 512, W, 6);
+  for (const st of stalls) emoji(st.emoji, st.x, 506, 40, 0.9);
 }
 
 // Wimpelkette am oberen Rand
