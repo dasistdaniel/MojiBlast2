@@ -24,6 +24,20 @@ const CONFETTI = ['#ff4f6a', '#3fa9ff', '#3ecf72', '#ffc93f', '#b66bff', '#ff8a3
 const GAP_NAMES = { start: 'Anfang', mid: 'Mitte', end: 'Ende' };
 const LEN_NAMES = { short: 'kurze', medium: 'mittlere', long: 'lange' };
 const GAP_ORDER = ['start', 'mid', 'end'], LEN_ORDER = ['short', 'medium', 'long'];
+const AVATARS = ['🦊', '🐻', '🐱', '🐰', '🐼', '🦄'];
+const DAILY_N = 10;                      // Wörter pro Tagesrunde
+const GOLD = { base: '#ffc93f', light: '#fff2b0', dark: '#c78f0a' };
+// Stufen für den Automatik-Modus: von leicht (Anfang, kurze Wörter) bis alles
+const LEVELS = [
+  { gaps: ['start'], lens: ['short'] },
+  { gaps: ['start', 'end'], lens: ['short'] },
+  { gaps: ['start', 'mid', 'end'], lens: ['short'] },
+  { gaps: ['start', 'end'], lens: ['short', 'medium'] },
+  { gaps: ['start', 'mid', 'end'], lens: ['short', 'medium'] },
+  { gaps: ['start', 'mid', 'end'], lens: ['medium', 'long'] },
+  { gaps: ['start', 'mid', 'end'], lens: ['short', 'medium', 'long'] },
+];
+const EMOJI_OF = Object.fromEntries(WORDS);
 
 // ---------- Hilfen ----------
 const $ = id => document.getElementById(id);
@@ -46,20 +60,108 @@ function save(key, val) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* egal */ }
 }
 
-// ---------- Einstellungen & Rekorde ----------
-const settings = load('mojiBlast2.settings', { gaps: ['start'], lens: ['short'], speak: true });
-if (!Array.isArray(settings.gaps) || !settings.gaps.length) settings.gaps = ['start'];
-if (!Array.isArray(settings.lens) || !settings.lens.length) settings.lens = ['short'];
-settings.speak = settings.speak !== false;
+// ---------- Profile & Fortschritt ----------
+// Jedes Kind wählt ein Tier-Emoji; Einstellungen, Rekorde, Sticker und Lernstand liegen pro Profil im Browser.
+const profileKey = av => `mojiBlast2.p.${av}`;
+let profileId = load('mojiBlast2.profile', AVATARS[0]);
+if (!AVATARS.includes(profileId)) profileId = AVATARS[0];
+let P = null;
 
-const modeKey = () => `${GAP_ORDER.filter(g => settings.gaps.includes(g)).join('-')}.${LEN_ORDER.filter(l => settings.lens.includes(l)).join('-')}`;
-const hsKey = () => `mojiBlast2.hs.${modeKey()}`;
-const modeName = () =>
-  `Lücke: ${GAP_ORDER.filter(g => settings.gaps.includes(g)).map(g => GAP_NAMES[g]).join(' & ')} · ` +
-  `${LEN_ORDER.filter(l => settings.lens.includes(l)).map(l => LEN_NAMES[l]).join(' & ')} Wörter`;
+// Datum als lokaler Tag (nicht UTC), „gestern“ per Kalender statt 24 Stunden abziehen (Zeitumstellung)
+const dateKey = (d = new Date()) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+const yesterdayKey = () => { const d = new Date(); return dateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1)); };
+
+function newProfile(migrate) {
+  const p = {
+    auto: true, level: 1, hist: [], gaps: ['start'], lens: ['short'], speak: true,
+    letters: {}, conf: {}, stickers: [], hs: {}, daily: { last: null, streak: 0, stars: 0 },
+  };
+  if (migrate) {  // Einstellungen und Rekorde aus der Version vor den Profilen übernehmen
+    const old = load('mojiBlast2.settings', null);
+    if (old) {
+      p.auto = false;
+      if (Array.isArray(old.gaps)) p.gaps = old.gaps;
+      if (Array.isArray(old.lens)) p.lens = old.lens;
+      p.speak = old.speak !== false;
+    }
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k.startsWith('mojiBlast2.hs.')) p.hs[k.slice('mojiBlast2.hs.'.length)] = load(k, 0);
+      }
+    } catch (e) { /* egal */ }
+  }
+  return p;
+}
+
+function loadProfile(av) {
+  profileId = av;
+  save('mojiBlast2.profile', av);
+  const raw = load(profileKey(av), null);
+  P = Object.assign(newProfile(av === AVATARS[0] && !raw), raw || {});
+  P.daily = Object.assign({ last: null, streak: 0, stars: 0 }, P.daily);
+  if (!Array.isArray(P.gaps) || !P.gaps.length) P.gaps = ['start'];
+  if (!Array.isArray(P.lens) || !P.lens.length) P.lens = ['short'];
+  if (!Array.isArray(P.hist)) P.hist = [];
+  if (!Array.isArray(P.stickers)) P.stickers = [];
+  P.level = clamp(Number(P.level) || 1, 1, LEVELS.length);
+  P.speak = P.speak !== false;
+  if (!raw) saveProfile();
+}
+const saveProfile = () => save(profileKey(profileId), P);
+
+const activeConfig = () => (P.auto ? LEVELS[P.level - 1] : { gaps: P.gaps, lens: P.lens });
+const modeKey = () => `${GAP_ORDER.filter(g => P.gaps.includes(g)).join('-')}.${LEN_ORDER.filter(l => P.lens.includes(l)).join('-')}`;
+const hsKey = () => (P.auto ? 'auto' : modeKey());
+const modeName = () => (P.auto ? `🤖 Automatisch · Stufe ${P.level}` :
+  `Lücke: ${GAP_ORDER.filter(g => P.gaps.includes(g)).map(g => GAP_NAMES[g]).join(' & ')} · ` +
+  `${LEN_ORDER.filter(l => P.lens.includes(l)).map(l => LEN_NAMES[l]).join(' & ')} Wörter`);
+
+// ---------- Lernstand ----------
+// Pro Buchstabe ein Wert 0…1 („wie sicher“): richtig im ersten Versuch steigt, Fehler senkt.
+// Schwache Buchstaben kommen öfter dran; im Automatik-Modus steigt die Stufe nach 9 von 10 richtig.
+const mastery = L => (L in P.letters ? P.letters[L] : 0.35);
+
+function noteResult(letter, ok) {
+  if (G.noted) return;               // pro Aufgabe nur einmal werten
+  G.noted = true;
+  const m = mastery(letter);
+  P.letters[letter] = Math.round((ok ? m + (1 - m) * 0.3 : m * 0.55) * 1000) / 1000;
+  if (P.auto) {
+    P.hist.push(ok);
+    if (P.hist.length > 10) P.hist.shift();
+    if (P.hist.length >= 10) {
+      const good = P.hist.filter(Boolean).length;
+      if (good >= 9 && P.level < LEVELS.length) {
+        P.level++; P.hist = [];
+        floatText(W / 2, 250, `⬆️ Stufe ${P.level}!`, '#4ade80', 46);
+        Sound.play('shieldup');
+      } else if (good <= 5 && P.level > 1) { P.level--; P.hist = []; }
+    }
+  }
+  saveProfile();
+}
+
+// ---------- Sticker ----------
+function unlockSticker(word) {
+  if (P.stickers.includes(word)) return false;
+  P.stickers.push(word);
+  G.newStickers.push(word);
+  saveProfile();
+  return true;
+}
+
+function unlockRandomSticker() {
+  const locked = WORDS.filter(([w]) => !P.stickers.includes(w));
+  if (!locked.length) return null;
+  const [w] = pick(locked);
+  unlockSticker(w);
+  return w;
+}
 
 // ---------- Aufgaben ----------
-// zwei falsche Buchstaben: Vokal ↔ Vokal, bei Konsonanten gern verwechselbare Paare (B/D, M/N …)
+// zwei falsche Buchstaben: Vokal ↔ Vokal, bei Konsonanten gern verwechselbare Paare (B/D, M/N …).
+// Ein Buchstabe, den das Kind früher schon einmal mit diesem verwechselt hat, kommt bevorzugt wieder.
 function distractors(word, idx) {
   const answer = word[idx];
   const base = answer === 'Ä' ? 'A' : answer === 'Ö' ? 'O' : answer === 'Ü' ? 'U' : answer;
@@ -69,8 +171,9 @@ function distractors(word, idx) {
     for (const g of CONFUSABLE) if (g.includes(base)) pool.push(...g, ...g);
     pool.push(...CONSONANTS);
   }
+  const prefer = shuffle((P.conf[answer] || []).slice()).slice(0, 1);
   const out = [];
-  for (const c of shuffle(pool)) {
+  for (const c of prefer.concat(shuffle(pool))) {
     if (c === answer || c === base || out.includes(c)) continue;
     const alt = word.slice(0, idx) + c + word.slice(idx + 1);
     if (WORDSET.has(alt)) continue;      // sonst gäbe es zwei richtige Wörter
@@ -80,15 +183,24 @@ function distractors(word, idx) {
   return out;
 }
 
+function weightedPick(cands) {
+  let r = Math.random() * cands.reduce((sum, c) => sum + c.wt, 0);
+  for (const c of cands) { r -= c.wt; if (r <= 0) return c; }
+  return cands[cands.length - 1];
+}
+
 const recent = [];
 function makeTask() {
-  let pool = WORDS.filter(([w]) => settings.lens.includes(lengthClass(w)) && gapPositions(w, settings.gaps).length);
+  const { gaps, lens } = activeConfig();
+  let pool = WORDS.filter(([w]) => lens.includes(lengthClass(w)) && gapPositions(w, gaps).length);
   const fresh = pool.filter(([w]) => !recent.includes(w));
   if (fresh.length) pool = fresh;
-  const [word, emoji] = pick(pool);
+  const cands = [];
+  for (const [word, emoji] of pool)
+    for (const idx of gapPositions(word, gaps)) cands.push({ word, emoji, idx, wt: 0.4 + 2.2 * (1 - mastery(word[idx])) });
+  const { word, emoji, idx } = weightedPick(cands);
   recent.push(word);
   if (recent.length > 12) recent.shift();
-  const idx = pick(gapPositions(word, settings.gaps));
   const answer = word[idx];
   return { word, emoji, idx, answer, answers: shuffle([answer, ...distractors(word, idx)]) };
 }
@@ -99,9 +211,11 @@ const G = {
   phase: 'fly',        // fly | success | reveal | dying
   phaseT: 0,
   task: null,
-  balloons: [], bullets: [], parts: [], texts: [],
+  mode: 'free',        // free | daily
+  balloons: [], golds: [], bullets: [], parts: [], texts: [],
   hero: { y: 320, targetY: null, cool: 0, blink: 0, dead: false },
   hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0,
+  errors: 0, done: 0, noted: false, taskErr: false, newStickers: [],
   speed: 22, shake: 0, time: 0,
 };
 
@@ -127,12 +241,13 @@ function balloonSpeed() {
 }
 
 // ---------- Spielablauf ----------
-function startGame() {
+function startGame(mode = 'free') {
   if (G.state === 'play') return;
   Object.assign(G, {
-    state: 'play', phase: 'fly', phaseT: 0, task: null,
-    balloons: [], bullets: [], parts: [], texts: [],
-    hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0, shake: 0, aim: null,
+    mode, state: 'play', phase: 'fly', phaseT: 0, task: null,
+    balloons: [], golds: [], bullets: [], parts: [], texts: [],
+    hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0, errors: 0, done: 0,
+    shake: 0, aim: null, newStickers: [], noted: false, taskErr: false,
   });
   Object.assign(G.hero, { y: 320, targetY: null, cool: 0.3, blink: 0, dead: false });
   showOverlay(null);
@@ -145,11 +260,13 @@ function startGame() {
 }
 
 function sayWord() {
-  if (settings.speak && G.task) Sound.say(G.task.word);
+  if (P.speak && G.task) Sound.say(G.task.word);
 }
 
 function newTask() {
   G.task = makeTask();
+  G.noted = false;
+  G.taskErr = false;
   const colors = shuffle(BALLOON_COLORS.slice());
   // Reste der vorigen Welle schweben davon, die neue Welle kommt von rechts
   const leaving = G.balloons.filter(b => b.state === 'flee' || b.state === 'fade');
@@ -158,6 +275,9 @@ function newTask() {
     state: 'fly', move: 'enter', hold: HOLD_TIME, t: Math.random() * 6, alpha: 1,
   }));
   G.balloons = leaving.concat(wave);
+  // ab und zu schwebt ein goldener Geschenk-Ballon zwischen den Bahnen vorbei (gehört nicht zur Aufgabe)
+  if (!G.golds.length && Math.random() < 0.18)
+    G.golds.push({ x: W + 90, baseY: pick([250, 385]) + rand(-15, 15), y: 250, t: 0, alpha: 1, state: 'fly', gift: true, color: GOLD });
   G.speed = balloonSpeed();
   G.aim = null;
   Sound.play('whoosh');
@@ -171,6 +291,14 @@ function shoot() {
   G.hero.cool = FIRE_COOLDOWN;
   G.bullets.push({ x: HERO_X + MUZZLE_DX, y: G.hero.y + 14, color: pick(CONFETTI) });
   Sound.play('laser');
+}
+
+function mistake() {
+  G.wrong++;
+  G.errors++;
+  G.streak = 0;
+  G.taskErr = true;
+  if (G.mode === 'free') loseHeart();  // in der Tagesrunde gibt es keine Herzen, nur Sterne am Ende
 }
 
 function hitBalloon(b) {
@@ -187,7 +315,12 @@ function hitBalloon(b) {
     if (G.streak >= 3) floatText(b.x - 20, b.y + 60, `🔥 ${G.streak}er-Serie!`, '#ff9f4f', 26);
     Sound.play('boom');
     Sound.play('correct');
-    if (G.correct % BONUS_EVERY === 0 && G.hearts < MAX_HEARTS) {
+    noteResult(t.answer, !G.taskErr);
+    if (unlockSticker(t.word)) {
+      floatText(W / 2, 150, `🆕 Sticker ${t.emoji}`, '#ffd84f', 30);
+      Sound.play('sticker');
+    }
+    if (G.mode === 'free' && G.correct % BONUS_EVERY === 0 && G.hearts < MAX_HEARTS) {
       G.hearts++;
       floatText(HERO_X + 40, G.hero.y - 70, '+❤️', '#ff6b8a', 40);
       Sound.play('shieldup');
@@ -196,22 +329,33 @@ function hitBalloon(b) {
     setPhase('success', 1.7);
     sayWord();
   } else {
-    G.wrong++;
-    G.streak = 0;
+    const seen = P.conf[t.answer] || [];
+    P.conf[t.answer] = [b.letter, ...seen.filter(x => x !== b.letter)].slice(0, 3);
+    saveProfile();
     pop(b, ['#999999', '#bbbbbb', '#777777'], 20, '💨');
     floatText(b.x, b.y - 10, 'Ups!', '#ff6b8a', 44);
     Sound.play('boom');
     Sound.play('wrong');
-    loseHeart();
+    mistake();
   }
 }
 
+function hitGold(g) {
+  g.state = 'dead';
+  pop(g, ['#ffd84f', '#fff2b0', '#ffffff'], 36, '🌟');
+  const w = unlockRandomSticker();
+  const pts = w ? 15 : 25;
+  G.score += pts;
+  Sound.play('boom');
+  Sound.play('sticker');
+  floatText(g.x, g.y - 60, w ? `🎁 ${EMOJI_OF[w]} Sticker!` : `🎁 +${pts}`, '#ffd84f', 36);
+}
+
 function balloonsArrived() {
-  G.wrong++;
-  G.streak = 0;
   Sound.play('timeout');
   floatText(W / 2, 150, `Gesucht war: ${G.task.answer}`, '#ffd84f', 34);
-  loseHeart();
+  mistake();
+  noteResult(G.task.answer, false);
   if (G.phase === 'fly') {
     for (const b of G.balloons) if (b.state === 'fly') b.state = b.letter === G.task.answer ? 'show' : 'fade';
     setPhase('reveal', 2.6);
@@ -229,6 +373,7 @@ function loseHeart() {
 }
 
 function die() {
+  noteResult(G.task.answer, false);
   G.hero.dead = true;
   G.shake = 0.5;
   explode(HERO_X, G.hero.y, ['#ff6b8a', '#ffc93f', '#ffffff'], 40);
@@ -240,27 +385,55 @@ function die() {
 }
 
 function endPhase() {
-  if (G.phase === 'success') newTask();
-  else if (G.phase === 'reveal') {
-    for (const b of G.balloons) if (b.state === 'show') b.state = 'flee';
-    newTask();
+  if (G.phase === 'success' || G.phase === 'reveal') {
+    if (G.phase === 'reveal') for (const b of G.balloons) if (b.state === 'show') b.state = 'flee';
+    G.done++;
+    if (G.mode === 'daily' && G.done >= DAILY_N) finishDaily(); else newTask();
   } else if (G.phase === 'dying') gameOver();
 }
 
-function gameOver() {
+function showResult(title, mode, score, stats, best) {
   G.state = 'over';
   $('hudButtons').classList.add('hidden');
   $('btnFire').classList.add('hidden');
-  const best = load(hsKey(), 0);
-  const record = G.score > best;
-  if (record) save(hsKey(), G.score);
-  $('overMode').textContent = modeName();
-  $('overScore').textContent = `⭐ ${G.score} Punkte`;
-  $('overStats').textContent = `✅ ${G.correct} richtig · ❌ ${G.wrong} falsch · 🔥 beste Serie ${G.bestStreak}`;
-  $('overBest').textContent = record && G.score > 0 ? '🏆 Neuer Rekord!' : `🏆 Rekord: ${best}`;
-  Sound.play(record && G.score > 0 ? 'record' : 'gameover');
+  $('overTitle').textContent = title;
+  $('overMode').textContent = mode;
+  $('overScore').textContent = score;
+  $('overStats').textContent = stats;
+  $('overBest').textContent = best;
+  $('overStickers').textContent = G.newStickers.length ? `🆕 Neue Sticker: ${G.newStickers.map(w => EMOJI_OF[w]).join(' ')}` : '';
   G.overAt = performance.now();
   showOverlay('over');
+}
+
+function gameOver() {
+  const key = hsKey(), best = P.hs[key] || 0;
+  const record = G.score > best;
+  if (record) { P.hs[key] = G.score; saveProfile(); }
+  showResult('🎈 Geschafft!', modeName(), `⭐ ${G.score} Punkte`,
+    `✅ ${G.correct} richtig · ❌ ${G.wrong} falsch · 🔥 beste Serie ${G.bestStreak}`,
+    record && G.score > 0 ? '🏆 Neuer Rekord!' : `🏆 Rekord: ${best}`);
+  Sound.play(record && G.score > 0 ? 'record' : 'gameover');
+}
+
+// Tagesrunde: 10 Wörter, Sterne nach Fehlern; die erste Runde des Tages zählt für die Tage-Serie und bringt ein Geschenk
+function finishDaily() {
+  const today = dateKey(), first = P.daily.last !== today;
+  const stars = G.errors <= 1 ? 3 : G.errors <= 3 ? 2 : 1;
+  if (first) {
+    P.daily.streak = P.daily.last === yesterdayKey() ? P.daily.streak + 1 : 1;
+    P.daily.stars = stars;
+  } else P.daily.stars = Math.max(P.daily.stars, stars);
+  P.daily.last = today;
+  const gift = first ? unlockRandomSticker() : null;
+  saveProfile();
+  Sound.stopMusic();
+  const days = P.daily.streak;
+  showResult('📅 Tagesrunde geschafft!', `Tagesrunde · ${DAILY_N} Wörter`,
+    '⭐'.repeat(stars) + '☆'.repeat(3 - stars),
+    `✅ ${G.correct} richtig · ❌ ${G.errors} Fehler · ⭐ ${G.score} Punkte`,
+    `🔥 ${days} ${days === 1 ? 'Tag' : 'Tage'} in Folge${gift ? ` · 🎁 Tagesgeschenk ${EMOJI_OF[gift]}` : ''}`);
+  Sound.play('record');
 }
 
 function pause() {
@@ -280,7 +453,7 @@ function resume() {
 
 function toMenu() {
   G.state = 'title';
-  G.balloons = []; G.bullets = []; G.parts = []; G.texts = [];
+  G.balloons = []; G.golds = []; G.bullets = []; G.parts = []; G.texts = [];
   G.hero.dead = false;
   Sound.stopMusic();
   Sound.hush();
@@ -291,7 +464,7 @@ function toMenu() {
 }
 
 function showOverlay(id) {
-  for (const o of ['title', 'pause', 'over']) $(o).classList.toggle('hidden', o !== id);
+  for (const o of ['title', 'settings', 'album', 'pause', 'over']) $(o).classList.toggle('hidden', o !== id);
 }
 
 // ---------- Effekte ----------
@@ -377,6 +550,12 @@ function update(dt) {
     }
   }
 
+  for (const g of G.golds) {
+    g.t += dt;
+    g.x -= 70 * dt;
+    g.y = g.baseY + Math.sin(g.t * 2) * 12;
+  }
+
   // Treffer prüfen (großzügige Hitbox für Kinderfinger)
   if (G.phase === 'fly') {
     for (const bu of G.bullets) {
@@ -391,6 +570,11 @@ function update(dt) {
       if (G.phase !== 'fly') break;
     }
   }
+  // Geschenk-Ballons zählen in jeder Phase; enge Hitbox, damit sie keine Schüsse auf Buchstaben-Ballons stehlen
+  for (const bu of G.bullets)
+    for (const g of G.golds)
+      if (g.state === 'fly' && !bu.hit && bu.x > g.x - BALLOON_RX - 8 && bu.x < g.x + BALLOON_RX && Math.abs(bu.y - g.y) < 48) { bu.hit = true; hitGold(g); }
+  G.golds = G.golds.filter(g => g.state === 'fly' && g.x > -70);
   G.bullets = G.bullets.filter(b => !b.hit && b.x < W + 30);
 
   // Ballons haben den Schützen erreicht
@@ -606,14 +790,16 @@ function drawBalloon(b) {
     ctx.ellipse(0, 0, BALLOON_RX + 6, BALLOON_RY + 6, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
-  // Buchstabe
-  ctx.font = `900 64px ${TEXT_FONT}`;
-  ctx.lineJoin = 'round';
-  ctx.lineWidth = 8;
-  ctx.strokeStyle = c.dark;
-  ctx.strokeText(b.letter, 0, 4);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText(b.letter, 0, 4);
+  if (b.gift) emoji('🎁', 0, 2, 50);
+  else {
+    ctx.font = `900 64px ${TEXT_FONT}`;
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = c.dark;
+    ctx.strokeText(b.letter, 0, 4);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(b.letter, 0, 4);
+  }
   ctx.restore();
   ctx.globalAlpha = 1;
 }
@@ -665,12 +851,18 @@ function drawHud() {
     ctx.fillText('🔈', px + panelW - 22, py + 22);
     ctx.globalAlpha = 1;
   }
-  // Herzen
-  for (let i = 0; i < Math.max(START_HEARTS, G.hearts); i++)
-    emoji('❤️', 35 + i * 36, 38, 30, i < G.hearts ? 1 : 0.2);
-  // Punkte und Serie
   ctx.textAlign = 'left';
   ctx.font = `900 30px ${TEXT_FONT}`;
+  if (G.mode === 'daily') {
+    // Fortschritt der Tagesrunde statt Herzen
+    emoji('📅', 35, 38, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`${Math.min(G.done + 1, DAILY_N)}/${DAILY_N}`, 58, 40);
+  } else {
+    for (let i = 0; i < Math.max(START_HEARTS, G.hearts); i++)
+      emoji('❤️', 35 + i * 36, 38, 30, i < G.hearts ? 1 : 0.2);
+  }
+  // Punkte und Serie
   emoji('⭐', 35, 80, 28);
   ctx.fillStyle = '#ffd84f';
   ctx.fillText(String(G.score), 56, 82);
@@ -678,6 +870,11 @@ function drawHud() {
     emoji('🔥', 165, 80, 26);
     ctx.fillStyle = '#ff9f4f';
     ctx.fillText(String(G.streak), 184, 82);
+  }
+  if (G.mode === 'free' && P.auto) {
+    ctx.font = `900 20px ${TEXT_FONT}`;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillText(`🎓 Stufe ${P.level}`, 28, 118);
   }
   ctx.textAlign = 'center';
 }
@@ -693,6 +890,7 @@ function draw() {
   if (G.state === 'title') { drawHero(); return; }
 
   for (const b of G.balloons) drawBalloon(b);
+  for (const g of G.golds) drawBalloon(g);
   if (G.aim) {
     // Zielmarkierung um den angetippten Ballon
     const a = G.aim, rad = 60 + Math.sin(G.time * 10) * 4;
@@ -751,45 +949,91 @@ function frame(now) {
 
 // ---------- Titelbildschirm ----------
 function updateTitle() {
-  for (const b of document.querySelectorAll('[data-gap]'))
-    b.setAttribute('aria-pressed', settings.gaps.includes(b.dataset.gap));
-  for (const b of document.querySelectorAll('[data-len]'))
-    b.setAttribute('aria-pressed', settings.lens.includes(b.dataset.len));
-  $('btnSpeak').setAttribute('aria-pressed', settings.speak);
-  $('titleBest').textContent = `🏆 Rekord: ${load(hsKey(), 0)}`;
+  for (const b of document.querySelectorAll('.avatar')) b.setAttribute('aria-pressed', b.dataset.av === profileId);
+  const d = P.daily, today = dateKey();
+  const streak = d.last === today || d.last === yesterdayKey() ? d.streak : 0;
+  const days = streak > 1 ? ` · 🔥 ${streak} Tage` : '';
+  $('titleDaily').textContent = d.last === today ? `📅 Heute geschafft ${'⭐'.repeat(d.stars)}${days}` : `📅 Tagesrunde wartet${days}`;
+  $('titleBest').textContent = `🏆 Rekord: ${P.hs[hsKey()] || 0}`;
+  $('btnAlbum').textContent = `📒 Sticker ${P.stickers.length}/${WORDS.length}`;
 }
 
-// Mehrfachauswahl, mindestens ein Eintrag bleibt gewählt
+function updateSettings() {
+  $('btnAuto').setAttribute('aria-pressed', P.auto);
+  $('btnSpeak').setAttribute('aria-pressed', P.speak);
+  for (const b of document.querySelectorAll('[data-gap]')) b.setAttribute('aria-pressed', P.gaps.includes(b.dataset.gap));
+  for (const b of document.querySelectorAll('[data-len]')) b.setAttribute('aria-pressed', P.lens.includes(b.dataset.len));
+  $('gapGroup').classList.toggle('dim', P.auto);
+  $('lenGroup').classList.toggle('dim', P.auto);
+  $('levelInfo').textContent = P.auto
+    ? `Stufe ${P.level} von ${LEVELS.length} – wird leichter oder schwerer, je nach Können.`
+    : 'Eigene Auswahl: Lücke und Wortlänge bleiben, wie eingestellt.';
+}
+
+// Mehrfachauswahl, mindestens ein Eintrag bleibt gewählt; eine eigene Wahl schaltet die Automatik aus
 function bindMulti(attr, list) {
   for (const b of document.querySelectorAll(`[data-${attr}]`)) {
     b.addEventListener('click', () => {
-      const v = b.dataset[attr], on = settings[list].includes(v);
-      if (on && settings[list].length === 1) {
+      const v = b.dataset[attr], on = P[list].includes(v);
+      if (on && P[list].length === 1) {
         b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
         Sound.play('deny');
         return;
       }
-      settings[list] = on ? settings[list].filter(x => x !== v) : settings[list].concat(v);
-      save('mojiBlast2.settings', settings);
+      P[list] = on ? P[list].filter(x => x !== v) : P[list].concat(v);
+      P.auto = false;
+      saveProfile();
       Sound.play('click');
-      updateTitle();
+      updateSettings();
     });
   }
 }
 bindMulti('gap', 'gaps');
 bindMulti('len', 'lens');
 
+$('btnAuto').addEventListener('click', () => { P.auto = !P.auto; saveProfile(); Sound.play('click'); updateSettings(); });
 $('btnSpeak').addEventListener('click', () => {
-  settings.speak = !settings.speak;
-  save('mojiBlast2.settings', settings);
+  P.speak = !P.speak;
+  saveProfile();
   Sound.play('click');
-  if (settings.speak) Sound.say('KATZE');
-  updateTitle();
+  if (P.speak) Sound.say('KATZE');
+  updateSettings();
 });
 
+for (const av of AVATARS) {
+  const b = document.createElement('button');
+  b.className = 'chip avatar';
+  b.dataset.av = av;
+  b.textContent = av;
+  b.setAttribute('aria-label', `Spieler ${av}`);
+  b.addEventListener('click', () => { loadProfile(av); Sound.play('click'); updateTitle(); updateSettings(); });
+  $('avatarRow').appendChild(b);
+}
+
+function renderAlbum() {
+  $('albumTitle').textContent = `📒 Meine Sticker ${P.stickers.length}/${WORDS.length}`;
+  const grid = $('albumGrid');
+  grid.textContent = '';
+  for (const [word, emojiChar] of WORDS) {
+    const got = P.stickers.includes(word);
+    const tile = document.createElement('button'), e = document.createElement('span'), name = document.createElement('small');
+    tile.className = got ? 'stk' : 'stk locked';
+    e.textContent = emojiChar;
+    name.textContent = got ? word : '?';
+    tile.append(e, name);
+    if (got) tile.addEventListener('click', () => Sound.say(word));   // Antippen spricht das Wort
+    grid.appendChild(tile);
+  }
+}
+
 // ---------- Eingabe ----------
-$('btnStart').addEventListener('click', startGame);
-$('btnAgain').addEventListener('click', startGame);
+$('btnStart').addEventListener('click', () => startGame('free'));
+$('btnDaily').addEventListener('click', () => startGame('daily'));
+$('btnAgain').addEventListener('click', () => startGame(G.mode));
+$('btnSettings').addEventListener('click', () => { updateSettings(); showOverlay('settings'); });
+$('btnSettingsBack').addEventListener('click', () => { updateTitle(); showOverlay('title'); });
+$('btnAlbum').addEventListener('click', () => { renderAlbum(); showOverlay('album'); });
+$('btnAlbumBack').addEventListener('click', () => showOverlay('title'));
 $('btnMenu').addEventListener('click', toMenu);
 $('btnResume').addEventListener('click', resume);
 $('btnPauseMenu').addEventListener('click', toMenu);
@@ -812,16 +1056,19 @@ window.addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'KeyM') { Sound.toggle(); updateMuteIcon(); }
   if (e.code === 'KeyR' && G.state === 'play') sayWord();
+  // Einstellungen und Album liegen über dem Titel: Tasten dürfen dort kein Spiel starten
+  const onTitle = G.state === 'title' && !$('title').classList.contains('hidden');
   if (e.code === 'Escape' || e.code === 'KeyP') {
     if (G.state === 'play') pause(); else if (G.state === 'paused') resume();
+    else if (G.state === 'title' && !onTitle) { updateTitle(); showOverlay('title'); }
   }
   if (e.code === 'Enter' || e.code === 'NumpadEnter') {
     e.preventDefault();
-    if (G.state === 'title') startGame();
+    if (onTitle) startGame('free');
     else if (G.state === 'paused') resume();
-    else if (G.state === 'over' && performance.now() - G.overAt > 700) startGame();
+    else if (G.state === 'over' && performance.now() - G.overAt > 700) startGame(G.mode);
   }
-  if (e.code === 'Space' && G.state === 'title') startGame();
+  if (e.code === 'Space' && onTitle) startGame('free');
 });
 
 window.addEventListener('keyup', e => {
@@ -842,6 +1089,10 @@ function pointerX(e) {
   return (e.clientX - rect.left) / rect.width * W;
 }
 // Antippen rechts vom Schützen wählt den Ballon der nächstgelegenen Bahn – Kinderfinger müssen nicht genau treffen
+function goldAt(x, y) {
+  if (x < HERO_X + 70) return null;
+  return G.golds.find(g => g.state === 'fly' && Math.hypot(x - g.x, y - g.y) < 60) || null;
+}
 function balloonAt(x, y) {
   if (G.phase !== 'fly' || x < HERO_X + 70) return null;
   let best = null;
@@ -853,7 +1104,7 @@ canvas.addEventListener('pointerdown', e => {
   if (G.state !== 'play') return;
   // Antippen von Emoji/Wort oben spricht das Wort noch einmal
   if (pointerY(e) < 104 && Math.abs(pointerX(e) - W / 2) < 260) { sayWord(); return; }
-  const target = G.hero.dead ? null : balloonAt(pointerX(e), pointerY(e));
+  const target = G.hero.dead ? null : goldAt(pointerX(e), pointerY(e)) || balloonAt(pointerX(e), pointerY(e));
   if (target) {
     G.aim = target;
     G.hero.targetY = target.y - 14;
@@ -873,7 +1124,7 @@ canvas.addEventListener('pointerdown', e => {
 canvas.addEventListener('pointermove', e => {
   if (G.state !== 'play') { canvas.style.cursor = ''; return; }
   if (e.pointerId === input.pointerId) G.hero.targetY = pointerY(e);
-  else if (e.pointerType === 'mouse') canvas.style.cursor = balloonAt(pointerX(e), pointerY(e)) ? 'pointer' : 'crosshair';
+  else if (e.pointerType === 'mouse') canvas.style.cursor = goldAt(pointerX(e), pointerY(e)) || balloonAt(pointerX(e), pointerY(e)) ? 'pointer' : 'crosshair';
 });
 const pointerEnd = e => {
   if (firePointers.delete(e.pointerId)) { input.touchFire = firePointers.size > 0; return; }
@@ -925,6 +1176,8 @@ const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
 $('installHint').hidden = standalone || !ios;
 
 // ---------- Start ----------
+loadProfile(profileId);
 resize();
 updateTitle();
+updateSettings();
 requestAnimationFrame(frame);

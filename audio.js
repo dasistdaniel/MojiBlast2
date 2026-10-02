@@ -88,6 +88,7 @@ const Sound = (() => {
     gameover: () => arp([392, 330, 262, 196], 'triangle', 0.2, 0.36, 0.1),
     record:   () => arp([523, 659, 784, 1047, 1319, 1568], 'triangle', 0.1, 0.3, 0.12),
     whoosh:   () => { noise({ dur: 0.5, vol: 0.08, freq: 3000 }); tone({ type: 'sine', f0: 500, f1: 900, dur: 0.4, vol: 0.04 }); },
+    sticker:  () => arp([784, 988, 1175, 1568], 'sine', 0.06, 0.2, 0.11),
     click:    () => tone({ type: 'sine', f0: 900, f1: 1300, dur: 0.06, vol: 0.06 }),
     deny:     () => arp([220, 165], 'triangle', 0.08, 0.1, 0.08),
   };

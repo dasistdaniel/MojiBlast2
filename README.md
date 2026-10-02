@@ -1,12 +1,38 @@
+<p align="center">
+  <a href="https://dasistdaniel.github.io/MojiBlast2/"><img src="docs/title.jpg" alt="MojiBlast 2 Titelbildschirm" width="100%"></a>
+</p>
+
+<p align="center">
+  <a href="https://dasistdaniel.github.io/MojiBlast2/"><img src="https://img.shields.io/badge/%E2%96%B6%20Jetzt%20spielen-dasistdaniel.github.io%2FMojiBlast2-ff8fb8?style=for-the-badge" alt="Jetzt spielen"></a>
+</p>
+
 # MojiBlast 2 🎈
 
 **Buchstaben-Lernspiel auf dem Jahrmarkt** – für Kinder in Klasse 1–2.
 
-Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (🐄 `K ? H`). Drei Luftballons mit Buchstaben schweben heran. Schieß den Ballon mit dem richtigen Buchstaben ab!
+Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (⛺ `? E L T`). Drei Luftballons mit Buchstaben schweben heran. Schieß den Ballon mit dem richtigen Buchstaben ab!
+
+<p align="center">
+  <img src="docs/gameplay.jpg" alt="Spielszene: Fuchs mit Konfettikanone, Wort ?ELT, drei Buchstaben-Ballons und ein goldener Geschenk-Ballon" width="100%">
+</p>
 
 ## Spielen
 
-Lokal: `python -m http.server 8766` im Ordner starten und `http://localhost:8766` öffnen (oder `index.html` direkt öffnen). Kein Build, keine Abhängigkeiten. Läuft am PC und auf dem Handy/Tablet (Querformat), als App installierbar (PWA).
+**Online:** 👉 **[dasistdaniel.github.io/MojiBlast2](https://dasistdaniel.github.io/MojiBlast2/)** – läuft am PC und auf dem Handy/Tablet (Querformat), als App installierbar und offline spielbar.
+
+**Lokal:** `python -m http.server 8766` im Ordner starten und `http://localhost:8766` öffnen. Kein Build, keine Abhängigkeiten.
+
+## Spielmodi
+
+- **📅 Tagesrunde:** 10 Wörter, keine Herzen. Am Ende gibt es 1–3 ⭐ (je weniger Fehler, desto mehr). Die erste Runde des Tages zählt für die 🔥 Tage-Serie und bringt ein 🎁 Tagesgeschenk (ein Sticker).
+- **🎈 Freies Spiel:** so lange spielen, bis die ❤️ weg sind. Rekord pro Einstellung und Profil.
+
+## Profile, Lernstand und Sticker
+
+- **Profile:** 6 Tier-Emojis (🦊 🐻 🐱 🐰 🐼 🦄). Jedes Kind hat eigene Einstellungen, Rekorde, Sticker und Lernstand, gespeichert im Browser.
+- **🤖 Automatik:** Das Spiel merkt sich pro Buchstabe, wie sicher das Kind ist. Schwache Buchstaben kommen öfter, und früher verwechselte Buchstaben tauchen als falsche Ballons wieder auf. Bei 9 von 10 richtig geht es eine Stufe hoch (von „Anfang, kurze Wörter“ bis „alles“), bei höchstens 5 von 10 wieder runter.
+- **📒 Sticker:** Jedes richtig gelöste Wort schaltet sein Emoji im Album frei (noch gesperrte zeigen nur den Schatten). Im Album Sticker antippen = Wort vorlesen.
+- **🎁 Goldene Ballons:** Ab und zu schwebt einer zwischen den Bahnen vorbei. Abschießen bringt einen Bonus-Sticker und Punkte, Verpassen kostet nichts.
 
 ## Steuerung
 
@@ -21,19 +47,20 @@ Lokal: `python -m http.server 8766` im Ordner starten und `http://localhost:8766
 
 ## Regeln
 
-- 3 ❤️ zum Start, alle 10 richtigen Antworten gibt es ein Bonus-Herz (max. 5)
+- Freies Spiel: 3 ❤️ zum Start, alle 10 richtigen Antworten gibt es ein Bonus-Herz (max. 5)
 - Richtiger Ballon: +10 Punkte, ab einer Serie Bonuspunkte 🔥
-- Falscher Ballon oder Ballons erreichen den Schützen: −1 ❤️, der richtige Buchstabe wird gezeigt
+- Falscher Ballon oder Ballons erreichen den Schützen: −1 ❤️ (nur im freien Spiel), der richtige Buchstabe wird gezeigt
 - Das Wort wird vorgelesen (vorgefertigte Aufnahmen in `audio/words/`, abschaltbar)
 - Mit jedem Treffer schweben die Ballons etwas schneller
 
-## Einstellungen (Titelbildschirm)
+## Einstellungen (⚙️ auf dem Titelbildschirm)
 
+- **🤖 Automatisch** (Standard) oder eigene Auswahl:
 - **Wo fehlt der Buchstabe?** Anfang · Mitte · Ende (kombinierbar)
 - **Wörter:** kurz (3–4 Buchstaben) · mittel (5–6) · lang (7+)
 - **🗣️ Vorlesen** an/aus
 
-Laute wie SCH, CH, AU, EI, IE, ST-Doppelbuchstaben (LL, FF …) werden nie auseinandergerissen. Falsche Buchstaben sind Verwechsler (B/D, M/N, E/F …) bzw. andere Vokale.
+Laute wie SCH, CH, AU, EI, IE und Doppelbuchstaben (LL, FF …) werden nie auseinandergerissen. Falsche Buchstaben sind Verwechsler (B/D, M/N, E/F …) bzw. andere Vokale.
 
 ## Technik
 

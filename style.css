@@ -131,6 +131,7 @@ h2 {
 }
 .big:hover { transform: translateY(-0.3cqh); }
 .big:active { transform: translateY(0.6cqh); box-shadow: 0 0.2cqh 0 #b9711b; }
+.big.small { font-size: 4cqh; padding: 1cqh 3.4cqh; border-radius: 2cqh; }
 .big.alt {
   background: linear-gradient(180deg, #8fe3ff, #3fa9e0);
   color: #04203a;
@@ -201,3 +202,34 @@ h2 {
 @media (orientation: portrait) and (pointer: coarse) {
   #rotate { display: flex; }
 }
+
+/* ---------- Profile, Einstellungen, Album ---------- */
+.chip.avatar { font-size: 5.6cqh; padding: 0.6cqh 1.6cqh; line-height: 1.2; }
+.group.dim { opacity: 0.4; }
+.stickers { font-size: 4.2cqh; line-height: 1.3; max-width: 90%; }
+
+#albumGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11cqh, 1fr));
+  gap: 1cqh;
+  width: 92%;
+  max-height: 56cqh;
+  overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+  padding: 1cqh;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2cqh;
+}
+.stk {
+  background: rgba(255, 255, 255, 0.12);
+  border: 0.3cqh solid rgba(255, 255, 255, 0.2);
+  border-radius: 1.6cqh;
+  padding: 0.6cqh 0.2cqh;
+  font-size: 6cqh;
+  line-height: 1.1;
+}
+.stk small { display: block; font-size: 2cqh; font-weight: 700; color: var(--muted); }
+.stk.locked { cursor: default; }
+.stk.locked span { filter: brightness(0); opacity: 0.25; }
+.stk:not(.locked):hover { background: rgba(255, 255, 255, 0.24); }

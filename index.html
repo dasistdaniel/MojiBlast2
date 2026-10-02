@@ -13,7 +13,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="style.css?v=20261002101124">
+  <link rel="stylesheet" href="style.css?v=20261002102414">
 </head>
 <body>
   <div id="stage">
@@ -30,33 +30,59 @@
       <h1>Moji<span>Blast</span> 2 🎈</h1>
       <p class="sub">Welcher Buchstabe fehlt? Schieß den richtigen Ballon ab!</p>
 
-      <div class="group">
+      <div class="row" id="avatarRow" aria-label="Wer spielt?"></div>
+
+      <p class="best" id="titleDaily"></p>
+      <div class="row">
+        <button id="btnDaily" class="big">📅 Tagesrunde</button>
+        <button id="btnStart" class="big alt">🎈 Freies Spiel</button>
+      </div>
+      <p class="best" id="titleBest">🏆 Rekord: 0</p>
+      <div class="row">
+        <button id="btnAlbum" class="big small alt">📒 Sticker</button>
+        <button id="btnSettings" class="big small alt">⚙️ Einstellungen</button>
+        <button id="btnInstall" class="big small alt" hidden>📲 Als App</button>
+      </div>
+      <p class="hint" id="installHint" hidden>Als App: im Browser <b>Teilen</b> → <b>„Zum Home-Bildschirm“</b></p>
+      <p class="hint keys">Ballon anklicken – oder ⬆️⬇️ / W S fliegen und Leertaste schießen · R Wort nochmal · M Ton · Esc Pause</p>
+      <p class="hint touch">Ballon antippen – oder links ziehen zum Fliegen und 🔥 zum Schießen · Wort oben antippen = vorlesen</p>
+    </div>
+
+    <!-- Einstellungen -->
+    <div id="settings" class="overlay hidden">
+      <h2>⚙️ Einstellungen</h2>
+      <div class="row">
+        <button class="chip" id="btnAuto">🤖 Automatisch</button>
+        <button class="chip" id="btnSpeak">🗣️ Vorlesen</button>
+      </div>
+      <p class="hint" id="levelInfo"></p>
+
+      <div class="group" id="gapGroup">
         <div class="label">Wo fehlt der Buchstabe?</div>
-        <div class="row" id="gapButtons">
+        <div class="row">
           <button class="chip" data-gap="start">Anfang</button>
           <button class="chip" data-gap="mid">Mitte</button>
           <button class="chip" data-gap="end">Ende</button>
         </div>
       </div>
 
-      <div class="group">
+      <div class="group" id="lenGroup">
         <div class="label">Wörter</div>
-        <div class="row" id="lenButtons">
+        <div class="row">
           <button class="chip" data-len="short">kurz</button>
           <button class="chip" data-len="medium">mittel</button>
           <button class="chip" data-len="long">lang</button>
-          <button class="chip" id="btnSpeak">🗣️ Vorlesen</button>
         </div>
       </div>
 
-      <p class="best" id="titleBest">🏆 Rekord: 0</p>
-      <div class="row">
-        <button id="btnStart" class="big">▶ Start</button>
-        <button id="btnInstall" class="big alt" hidden>📲 Als App</button>
-      </div>
-      <p class="hint" id="installHint" hidden>Als App: im Browser <b>Teilen</b> → <b>„Zum Home-Bildschirm“</b></p>
-      <p class="hint keys">Ballon anklicken – oder ⬆️⬇️ / W S fliegen und Leertaste schießen · R Wort nochmal · M Ton · Esc Pause</p>
-      <p class="hint touch">Ballon antippen – oder links ziehen zum Fliegen und 🔥 zum Schießen · Wort oben antippen = vorlesen</p>
+      <button id="btnSettingsBack" class="big">✔ Fertig</button>
+    </div>
+
+    <!-- Stickeralbum -->
+    <div id="album" class="overlay hidden">
+      <h2 id="albumTitle">📒 Meine Sticker</h2>
+      <div id="albumGrid"></div>
+      <button id="btnAlbumBack" class="big">🏠 Zurück</button>
     </div>
 
     <!-- Pause -->
@@ -70,11 +96,12 @@
 
     <!-- Game Over -->
     <div id="over" class="overlay hidden">
-      <h2>🎈 Geschafft!</h2>
+      <h2 id="overTitle">🎈 Geschafft!</h2>
       <p class="mode" id="overMode"></p>
       <p class="score" id="overScore"></p>
       <p class="stats" id="overStats"></p>
       <p class="best" id="overBest"></p>
+      <p class="stickers" id="overStickers"></p>
       <div class="row">
         <button id="btnAgain" class="big">🔄 Nochmal</button>
         <button id="btnMenu" class="big alt">🏠 Menü</button>
@@ -84,8 +111,8 @@
 
   <div id="rotate">📱🔄<br>Bitte das Gerät quer halten</div>
 
-  <script src="words.js?v=20261002101124"></script>
-  <script src="audio.js?v=20261002101124"></script>
-  <script src="game.js?v=20261002101124"></script>
+  <script src="words.js?v=20261002102414"></script>
+  <script src="audio.js?v=20261002102414"></script>
+  <script src="game.js?v=20261002102414"></script>
 </body>
 </html>
