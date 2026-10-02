@@ -269,11 +269,6 @@ const props = [
   { emoji: '🎠', x: 280, y: 440, size: 100, speed: 10, alpha: 0.8 },
   { emoji: '🎪', x: 1000, y: 430, size: 120, speed: 8, alpha: 0.8 },
 ];
-// Buden am Tresen, ziehen etwas schneller vorbei
-const stalls = [
-  { emoji: '🍭', x: 120, speed: 14 }, { emoji: '🍿', x: 360, speed: 14 }, { emoji: '🎯', x: 610, speed: 14 },
-  { emoji: '🍭', x: 850, speed: 14 }, { emoji: '🍿', x: 1090, speed: 14 },
-];
 // Kleine Ballons steigen im Hintergrund auf, ab und zu fliegt ein Vogel vorbei und es gibt Feuerwerk
 const newBgBalloon = anywhere => ({ x: rand(30, W - 30), y: anywhere ? rand(0, H) : H + 40, r: rand(9, 17), vy: 10 + Math.random() * 14, ph: Math.random() * 6.28, c: pick(BALLOON_COLORS) });
 const bgBalloons = Array.from({ length: 10 }, () => newBgBalloon(true));
@@ -556,10 +551,6 @@ function update(dt) {
     c.x -= c.speed * dt;
     if (c.x < -c.size) { c.x = W + c.size; c.y = rand(70, 260); }
   }
-  for (const st of stalls) {
-    st.x -= st.speed * dt;
-    if (st.x < -60) st.x = W + 60;
-  }
   for (const b of bgBalloons) {
     b.y -= b.vy * dt;
     b.x += Math.sin(G.time * 0.8 + b.ph) * 8 * dt;
@@ -820,7 +811,6 @@ function drawBackground() {
   ctx.fillRect(0, 512, W, 28);
   ctx.fillStyle = '#c47a45';
   ctx.fillRect(0, 512, W, 6);
-  for (const st of stalls) emoji(st.emoji, st.x, 506, 40, 0.9);
 }
 
 // Wimpelkette am oberen Rand
