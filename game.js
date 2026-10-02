@@ -553,7 +553,14 @@ function drawHero() {
   ctx.fillStyle = '#3a2a5c';
   roundRect(kx + 42, ky - 3, 10, 26, 4);
   ctx.fill();
-  emoji(h.dead ? '😵' : '🥳', HERO_X, y, 70);
+  if (h.dead) {
+    ctx.save();
+    ctx.translate(HERO_X, y);
+    ctx.rotate(-0.5);
+    emoji('🦊', 0, 0, 70, 0.8);
+    ctx.restore();
+    emoji('💫', HERO_X, y - 44, 34);
+  } else emoji('🦊', HERO_X, y, 70);
 }
 
 function drawBalloon(b) {
