@@ -25,6 +25,7 @@ const GAP_NAMES = { start: 'Anfang', mid: 'Mitte', end: 'Ende' };
 const LEN_NAMES = { short: 'kurze', medium: 'mittlere', long: 'lange' };
 const GAP_ORDER = ['start', 'mid', 'end'], LEN_ORDER = ['short', 'medium', 'long'];
 const AVATARS = ['🦊', '🐻', '🐱', '🐰', '🐼', '🦄'];
+const FACES_LEFT = ['🦄'];
 const DAILY_N = 10;                      // Wörter pro Tagesrunde
 const GOLD = { base: '#ffc93f', light: '#fff2b0', dark: '#c78f0a' };
 // Stufen für den Automatik-Modus: von leicht (Anfang, kurze Wörter) bis alles
@@ -737,14 +738,14 @@ function drawHero() {
   ctx.fillStyle = '#3a2a5c';
   roundRect(kx + 42, ky - 3, 10, 26, 4);
   ctx.fill();
-  if (h.dead) {
-    ctx.save();
-    ctx.translate(HERO_X, y);
-    ctx.rotate(-0.5);
-    emoji(profileId, 0, 0, 70, 0.8);
-    ctx.restore();
-    emoji('💫', HERO_X, y - 44, 34);
-  } else emoji(profileId, HERO_X, y, 70);
+  // Seitenansicht-Emojis (🦄) schauen nach links und werden gespiegelt, damit sie auf die Ballons blicken
+  ctx.save();
+  ctx.translate(HERO_X, y);
+  if (FACES_LEFT.includes(profileId)) ctx.scale(-1, 1);
+  if (h.dead) ctx.rotate(-0.5);
+  emoji(profileId, 0, 0, 70, h.dead ? 0.8 : 1);
+  ctx.restore();
+  if (h.dead) emoji('💫', HERO_X, y - 44, 34);
 }
 
 function drawBalloon(b) {
