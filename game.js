@@ -8,7 +8,7 @@ const HERO_X = 90, HERO_MIN = 140, HERO_MAX = 470;
 const HERO_SPEED = 420, BULLET_SPEED = 950, FIRE_COOLDOWN = 0.28;
 const MUZZLE_DX = 48;                    // Konfetti kommt vorn aus dem Tier
 const BALLOON_RX = 42, BALLOON_RY = 52;
-const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 3.4; // Ballons schweben ein und warten, bis das Kind gelesen hat
+const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 1.2; // Ballons schweben ein und warten, bis das Kind gelesen hat
 const START_HEARTS = 3, MAX_HEARTS = 5, BONUS_EVERY = 10;
 const TEXT_FONT = 'Andika,"Arial Rounded MT Bold","Segoe UI","Trebuchet MS",system-ui,sans-serif';
 const BALLOON_COLORS = [
