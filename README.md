@@ -10,10 +10,10 @@
 
 **Buchstaben-Lernspiel auf dem Jahrmarkt** – für Kinder in Klasse 1–2.
 
-Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (⛺ `? E L T`). Drei Luftballons mit Buchstaben schweben heran. Schieß den Ballon mit dem richtigen Buchstaben ab!
+Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (🧀 `? Ä S E`). Drei Luftballons mit Buchstaben schweben heran. Schieß den Ballon mit dem richtigen Buchstaben ab!
 
 <p align="center">
-  <img src="docs/gameplay.jpg" alt="Spielszene: Fuchs mit Konfettikanone, Wort ?ELT, drei Buchstaben-Ballons und ein goldener Geschenk-Ballon" width="100%">
+  <img src="docs/gameplay.jpg" alt="Spielszene: Fuchs mit Konfettikanone, Wort ?ÄSE, drei Buchstaben-Ballons und ein goldener Geschenk-Ballon" width="100%">
 </p>
 
 ## Spielen
@@ -69,6 +69,8 @@ Laute wie SCH, CH, AU, EI, IE und Doppelbuchstaben (LL, FF …) werden nie ausei
 - `game.js` – Spiellogik, Aufgabengenerator, Zeichnen auf dem Canvas
 - `audio.js` – Soundeffekte, Jahrmarkt-Musik (WebAudio) und Wort-Aufnahmen
 - `tools/gen_voice.py` – erzeugt die Wort-Aufnahmen (`pip install edge-tts`, deutsche Stimme)
+- `emoji/` – alle Emojis als PNG (Noto Emoji von Google, Apache 2.0, siehe `emoji/LICENSE`), damit sie auf jedem Gerät gleich aussehen
+- `tools/get_emojis.mjs` – lädt die Emoji-Bilder (`node tools/get_emojis.mjs`), `tools/gen_voice.py` erzeugt die Wort-Aufnahmen
 - `sw.js`, `manifest.json`, `icons/` – PWA
 
-Neue Wörter: in `words.js` ein Paar `['WORT', '🙂']` in `WORDS` ergänzen (GROSSBUCHSTABEN, eindeutiges Emoji), dann `python tools/gen_voice.py` ausführen.
+Neue Wörter: in `words.js` ein Paar `['WORT', '🙂']` in `WORDS` ergänzen (GROSSBUCHSTABEN, eindeutiges Emoji), dann `python tools/gen_voice.py` und `node tools/get_emojis.mjs` ausführen.

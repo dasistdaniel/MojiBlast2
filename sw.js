@@ -25,7 +25,12 @@ const FILES = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE)
-      .then(cache => cache.addAll(FILES.map(f => new Request(f, { cache: 'no-cache' }))))
+      .then(async cache => {
+        await cache.addAll(FILES.map(f => new Request(f, { cache: 'no-cache' })));
+        // Emoji-Bilder: Liste steht in emoji/list.json (erzeugt von tools/get_emojis.mjs)
+        const keys = await (await fetch('emoji/list.json', { cache: 'no-cache' })).json();
+        await cache.addAll(keys.map(k => new Request(`emoji/${k}.png`, { cache: 'no-cache' })));
+      })
       .then(() => self.skipWaiting()),
   );
 });

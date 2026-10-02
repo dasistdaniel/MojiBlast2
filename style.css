@@ -233,3 +233,6 @@ h2 {
 .stk.locked { cursor: default; }
 .stk.locked span { filter: brightness(0); opacity: 0.25; }
 .stk:not(.locked):hover { background: rgba(255, 255, 255, 0.24); }
+
+/* ---------- Emoji-Bilder ---------- */
+.emo { height: 1.15em; width: 1.15em; vertical-align: -0.2em; object-fit: contain; pointer-events: none; }

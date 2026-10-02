@@ -10,7 +10,6 @@ const MUZZLE_DX = 66;                    // Mündung der Konfettikanone
 const BALLOON_RX = 42, BALLOON_RY = 52;
 const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 2.2; // Ballons schweben ein und warten, bis das Kind gelesen hat
 const START_HEARTS = 3, MAX_HEARTS = 5, BONUS_EVERY = 10;
-const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 const TEXT_FONT = '"Arial Rounded MT Bold","Segoe UI","Trebuchet MS",system-ui,sans-serif';
 const BALLOON_COLORS = [
   { base: '#ff4f6a', light: '#ff9aa9', dark: '#b81f3b' },
@@ -45,6 +44,41 @@ const $ = id => document.getElementById(id);
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// ---------- Emoji-Bilder ----------
+// Ein Emoji (auch mit Varianten-Selektor) → Dateiname in emoji/, z. B. 🦊 → 1f98a
+const EMOJI_RE = /\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu;
+const emojiKey = e => [...e].map(c => c.codePointAt(0)).filter(cp => cp !== 0xfe0f).map(cp => cp.toString(16)).join('-');
+const emojiImages = new Map();     // key → { img, ok } für das Canvas
+const emojiMissing = new Set();    // Emojis ohne Bilddatei bleiben als Schrift-Emoji stehen
+
+// Emojis in Texten der Seite durch <img> ersetzen; fehlt die Datei, bleibt das Schrift-Emoji
+function emojify(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) if (n.nodeValue.search(EMOJI_RE) >= 0) texts.push(n);
+  for (const node of texts) {
+    const text = node.nodeValue, frag = document.createDocumentFragment();
+    let last = 0;
+    for (const m of text.matchAll(EMOJI_RE)) {
+      if (m.index > last) frag.append(text.slice(last, m.index));
+      const key = emojiKey(m[0]);
+      if (emojiMissing.has(key)) frag.append(m[0]);
+      else {
+        const img = document.createElement('img');
+        img.className = 'emo';
+        img.alt = m[0];
+        img.draggable = false;
+        img.src = `emoji/${key}.png`;
+        img.addEventListener('error', () => { emojiMissing.add(key); img.replaceWith(m[0]); }, { once: true });
+        frag.append(img);
+      }
+      last = m.index + m[0].length;
+    }
+    if (last < text.length) frag.append(text.slice(last));
+    node.replaceWith(frag);
+  }
+}
 
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
@@ -602,9 +636,8 @@ function update(dt) {
 const canvas = $('game'), ctx = canvas.getContext('2d');
 let dpr = 1;
 
-// Emojis jedes Frame neu zu setzen ist auf schwachen Geräten teuer – besonders groß und halbtransparent.
-// Deshalb wird jedes Emoji (und jeder Flugtext) einmal in ein kleines Bild gezeichnet und danach nur noch kopiert.
-const sprites = new Map();
+// Emojis kommen als Bilder aus emoji/ (Noto Emoji), damit sie auf jedem Gerät gleich aussehen.
+// Flugtexte werden einmal in ein kleines Bild gezeichnet und danach nur noch kopiert.
 let spriteScale = 1;
 
 function resize() {
@@ -613,7 +646,6 @@ function resize() {
   canvas.width = Math.round(rect.width * dpr);
   canvas.height = Math.round(rect.height * dpr);
   spriteScale = canvas.width / W;
-  sprites.clear();
 }
 
 // Zeichenfläche für ein Sprite; als ImageBitmap lässt es sich am schnellsten kopieren
@@ -625,44 +657,63 @@ function spriteCanvas(w, h) {
 }
 const toBitmap = c => (c.transferToImageBitmap ? c.transferToImageBitmap() : c);
 
-function sprite(e, size) {
-  const key = `${e}|${size}`;
-  let img = sprites.get(key);
-  if (!img) {
-    const box = Math.max(1, Math.ceil(size * 1.4 * spriteScale));
-    const c = spriteCanvas(box, box), g = c.getContext('2d');
-    g.font = `${size * spriteScale}px ${EMOJI_FONT}`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(e, box / 2, box / 2);
-    img = toBitmap(c);
-    sprites.set(key, img);
+// Bild eines Emojis; solange es lädt (oder fehlt), wird nichts gezeichnet
+function emojiBitmap(e) {
+  const key = emojiKey(e);
+  let rec = emojiImages.get(key);
+  if (!rec) {
+    rec = { img: new Image(), ok: false };
+    rec.img.onload = () => { rec.ok = true; };
+    rec.img.onerror = () => emojiMissing.add(key);
+    rec.img.src = `emoji/${key}.png`;
+    emojiImages.set(key, rec);
   }
-  return img;
+  return rec.ok ? rec.img : null;
 }
 
-// renderSize: Größe des zwischengespeicherten Bildes (für Emojis, die beim Zeichnen wachsen)
-function emoji(e, x, y, size, alpha = 1, renderSize = size) {
-  const d = size * 1.4;
+function emoji(e, x, y, size, alpha = 1) {
+  const img = emojiBitmap(e);
+  if (!img) return;
+  const d = size * 1.2;
   ctx.globalAlpha = alpha;
-  ctx.drawImage(sprite(e, renderSize), x - d / 2, y - d / 2, d, d);
+  ctx.drawImage(img, x - d / 2, y - d / 2, d, d);
   ctx.globalAlpha = 1;
 }
 
+// Text mit eingestreuten Emojis (Flugtexte): Text als Schrift, Emojis als Bilder
 function textSprite(text, color, size) {
-  const s = spriteScale, font = `900 ${size * s}px ${TEXT_FONT}, ${EMOJI_FONT}`;
+  const s = spriteScale, font = `900 ${size * s}px ${TEXT_FONT}`, em = size * s * 1.15;
   ctx.font = font;
-  const c = spriteCanvas(Math.ceil(ctx.measureText(text).width + 12 * s), Math.ceil(size * 1.5 * s));
+  const segs = [];
+  let last = 0;
+  for (const m of text.matchAll(EMOJI_RE)) {
+    if (m.index > last) segs.push({ t: text.slice(last, m.index) });
+    segs.push({ e: m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) segs.push({ t: text.slice(last) });
+  for (const g of segs) g.w = g.e ? em : ctx.measureText(g.t).width;
+  const total = segs.reduce((sum, g) => sum + g.w, 0);
+  const c = spriteCanvas(Math.ceil(total + 12 * s), Math.ceil(size * 1.5 * s));
   const g = c.getContext('2d');
   g.font = font;
-  g.textAlign = 'center';
+  g.textAlign = 'left';
   g.textBaseline = 'middle';
   g.lineWidth = 5 * s;
   g.lineJoin = 'round';
   g.strokeStyle = 'rgba(40,10,60,0.7)';
   g.fillStyle = color;
-  g.strokeText(text, c.width / 2, c.height / 2);
-  g.fillText(text, c.width / 2, c.height / 2);
+  let x = 6 * s;
+  for (const seg of segs) {
+    if (seg.e) {
+      const img = emojiBitmap(seg.e);
+      if (img) g.drawImage(img, x, c.height / 2 - em / 2, em, em);
+    } else {
+      g.strokeText(seg.t, x, c.height / 2);
+      g.fillText(seg.t, x, c.height / 2);
+    }
+    x += seg.w;
+  }
   return { w: c.width / s, h: c.height / s, img: toBitmap(c) };
 }
 
@@ -847,10 +898,7 @@ function drawHud() {
       }
     }
     // Lautsprecher-Hinweis: Antippen spricht das Wort
-    ctx.font = `20px ${EMOJI_FONT}`;
-    ctx.globalAlpha = 0.7;
-    ctx.fillText('🔈', px + panelW - 22, py + 22);
-    ctx.globalAlpha = 1;
+    emoji('🔈', px + panelW - 22, py + 22, 17, 0.7);
   }
   ctx.textAlign = 'left';
   ctx.font = `900 30px ${TEXT_FONT}`;
@@ -875,7 +923,8 @@ function drawHud() {
   if (G.mode === 'free' && P.auto) {
     ctx.font = `900 20px ${TEXT_FONT}`;
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.fillText(`🎓 Stufe ${P.level}`, 28, 118);
+    emoji('🎓', 40, 118, 17);
+    ctx.fillText(`Stufe ${P.level}`, 56, 118);
   }
   ctx.textAlign = 'center';
 }
@@ -1177,6 +1226,16 @@ const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
 $('installHint').hidden = standalone || !ios;
 
 // ---------- Start ----------
+// Emoji-Bilder vorladen (Wörter, Oberfläche) und Emojis in Seitentexten ersetzen, auch wenn sie später gesetzt werden
+for (const [, e] of WORDS) emojiBitmap(e);
+for (const e of ['🎡', '🎠', '🎪', '☁️', '❤️', '⭐', '🔥', '🌟', '✨', '💨', '🎁', '💫', '🔈', '🎓', ...AVATARS]) emojiBitmap(e);
+new MutationObserver(muts => {
+  for (const m of muts) for (const n of m.addedNodes) {
+    if (n.nodeType === Node.TEXT_NODE) { if (n.parentNode) emojify(n.parentNode); } else if (n.nodeType === Node.ELEMENT_NODE) emojify(n);
+  }
+}).observe(document.body, { childList: true, subtree: true });
+emojify(document.body);
+
 loadProfile(profileId);
 resize();
 updateTitle();
