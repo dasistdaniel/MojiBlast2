@@ -1102,8 +1102,7 @@ function renderParent() {
   $('parentInfo').textContent = `${P.auto ? `Stufe ${P.level} von ${LEVELS.length}` : 'Eigene Auswahl'} · 📒 ${P.stickers.length}/${WORDS.length} Sticker · 🔥 ${streak} Tage in Folge`;
   const grid = $('parentGrid');
   grid.textContent = '';
-  const sounds = Object.keys(P.counts).filter(k => k.length > 1).sort();
-  for (const k of LETTERS.concat(sounds)) {
+  for (const k of LETTERS.concat(Object.keys(SOUND_ALT))) {   // Laute immer zeigen, auch ungespielte
     const c = P.counts[k], tile = document.createElement('div'), big = document.createElement('b'), small = document.createElement('small');
     tile.className = k.length > 1 ? 'ptile wide' : 'ptile';
     tile.style.background = c ? `hsl(${Math.round(mastery(k) * 120)} 55% 30%)` : 'rgba(255,255,255,0.1)';
