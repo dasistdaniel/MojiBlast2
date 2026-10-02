@@ -8,7 +8,7 @@ const HERO_X = 90, HERO_MIN = 140, HERO_MAX = 470;
 const HERO_SPEED = 420, BULLET_SPEED = 950, FIRE_COOLDOWN = 0.28;
 const MUZZLE_DX = 48;                    // Konfetti kommt vorn aus dem Tier
 const BALLOON_RX = 42, BALLOON_RY = 52;
-const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 2.2; // Ballons schweben ein und warten, bis das Kind gelesen hat
+const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 3.4; // Ballons schweben ein und warten, bis das Kind gelesen hat
 const START_HEARTS = 3, MAX_HEARTS = 5, BONUS_EVERY = 10;
 const TEXT_FONT = 'Andika,"Arial Rounded MT Bold","Segoe UI","Trebuchet MS",system-ui,sans-serif';
 const BALLOON_COLORS = [
@@ -307,7 +307,10 @@ function newTask() {
   const leaving = G.balloons.filter(b => b.state === 'flee' || b.state === 'fade');
   const wave = G.task.answers.map((letter, i) => ({
     x: W + 120, baseY: LANES[i], y: LANES[i], letter, color: colors[i],
-    state: 'fly', move: 'enter', hold: HOLD_TIME, t: Math.random() * 6, alpha: 1,
+    state: 'fly', move: 'enter', t: Math.random() * 6, alpha: 1,
+    // jeder Ballon fliegt etwas anders: eigene Wartezeit, Tempo, Wippen und leichtes Schlingern
+    hold: HOLD_TIME * (0.85 + Math.random() * 0.4), spd: 0.85 + Math.random() * 0.3,
+    amp: 8 + Math.random() * 10, freq: 1.5 + Math.random() * 1.1, wob: 4 + Math.random() * 8, ph: Math.random() * 6.28,
   }));
   G.balloons = leaving.concat(wave);
   // ab und zu schwebt ein goldener Geschenk-Ballon zwischen den Bahnen vorbei (gehört nicht zur Aufgabe)
@@ -575,8 +578,8 @@ function update(dt) {
       } else if (b.move === 'hold') {
         b.hold -= dt;
         if (b.hold <= 0) b.move = 'approach';
-      } else b.x -= G.speed * dt;
-      b.y = b.baseY + Math.sin(b.t * 2) * 12;
+      } else b.x -= G.speed * b.spd * dt;
+      b.y = b.baseY + Math.sin(b.t * b.freq) * b.amp + Math.sin(b.t * 0.7 + b.ph) * b.wob;
     } else if (b.state === 'flee') {
       b.y -= 260 * dt;
       b.x += Math.sin(b.t * 3) * 20 * dt;
@@ -585,7 +588,7 @@ function update(dt) {
       b.y -= 60 * dt;
       b.alpha -= dt * 1.5;
     } else if (b.state === 'show') {
-      b.y = b.baseY + Math.sin(b.t * 2) * 12;
+      b.y = b.baseY + Math.sin(b.t * b.freq) * b.amp;
     }
   }
 
