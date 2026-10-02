@@ -10,7 +10,7 @@ const MUZZLE_DX = 48;                    // Konfetti kommt vorn aus dem Tier
 const BALLOON_RX = 42, BALLOON_RY = 52;
 const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 2.2; // Ballons schweben ein und warten, bis das Kind gelesen hat
 const START_HEARTS = 3, MAX_HEARTS = 5, BONUS_EVERY = 10;
-const TEXT_FONT = '"Arial Rounded MT Bold","Segoe UI","Trebuchet MS",system-ui,sans-serif';
+const TEXT_FONT = 'Andika,"Arial Rounded MT Bold","Segoe UI","Trebuchet MS",system-ui,sans-serif';
 const BALLOON_COLORS = [
   { base: '#ff4f6a', light: '#ff9aa9', dark: '#b81f3b' },
   { base: '#3fa9ff', light: '#9bd4ff', dark: '#1a69b8' },
@@ -20,9 +20,9 @@ const BALLOON_COLORS = [
   { base: '#ff8a3f', light: '#ffc29a', dark: '#c4560f' },
 ];
 const CONFETTI = ['#ff4f6a', '#3fa9ff', '#3ecf72', '#ffc93f', '#b66bff', '#ff8a3f', '#ffffff'];
-const GAP_NAMES = { start: 'Anfang', mid: 'Mitte', end: 'Ende' };
+const GAP_NAMES = { start: 'Anfang', mid: 'Mitte', end: 'Ende', sound: 'Laute' };
 const LEN_NAMES = { short: 'kurze', medium: 'mittlere', long: 'lange' };
-const GAP_ORDER = ['start', 'mid', 'end'], LEN_ORDER = ['short', 'medium', 'long'];
+const GAP_ORDER = ['start', 'mid', 'end', 'sound'], LEN_ORDER = ['short', 'medium', 'long'];
 const AVATARS = ['🦊', '🐻', '🐱', '🐰', '🐼', '🦄'];
 const FACES_LEFT = ['🦄'];
 const DAILY_N = 10;                      // Wörter pro Tagesrunde
@@ -36,6 +36,8 @@ const LEVELS = [
   { gaps: ['start', 'mid', 'end'], lens: ['short', 'medium'] },
   { gaps: ['start', 'mid', 'end'], lens: ['medium', 'long'] },
   { gaps: ['start', 'mid', 'end'], lens: ['short', 'medium', 'long'] },
+  { gaps: ['sound'], lens: ['short', 'medium', 'long'] },
+  { gaps: ['start', 'mid', 'end', 'sound'], lens: ['short', 'medium', 'long'] },
 ];
 const EMOJI_OF = Object.fromEntries(WORDS);
 
@@ -109,7 +111,7 @@ const yesterdayKey = () => { const d = new Date(); return dateKey(new Date(d.get
 function newProfile(migrate) {
   const p = {
     auto: true, level: 1, hist: [], gaps: ['start'], lens: ['short'], speak: true,
-    letters: {}, conf: {}, stickers: [], hs: {}, daily: { last: null, streak: 0, stars: 0 },
+    letters: {}, counts: {}, conf: {}, confN: {}, stickers: [], hs: {}, daily: { last: null, streak: 0, stars: 0 },
   };
   if (migrate) {  // Einstellungen und Rekorde aus der Version vor den Profilen übernehmen
     const old = load('mojiBlast2.settings', null);
@@ -141,7 +143,15 @@ function loadProfile(av) {
   if (!Array.isArray(P.stickers)) P.stickers = [];
   P.level = clamp(Number(P.level) || 1, 1, LEVELS.length);
   P.speak = P.speak !== false;
-  if (!raw) saveProfile();
+  if (!raw) {
+    saveProfile();
+    // alte Schlüssel aus der Zeit vor den Profilen entfernen, damit sie nach einem Zurücksetzen nicht wieder auftauchen
+    if (av === AVATARS[0]) try {
+      const old = [];
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k === 'mojiBlast2.settings' || k.startsWith('mojiBlast2.hs.')) old.push(k); }
+      for (const k of old) localStorage.removeItem(k);
+    } catch (e) { /* egal */ }
+  }
 }
 const saveProfile = () => save(profileKey(profileId), P);
 
@@ -162,6 +172,8 @@ function noteResult(letter, ok) {
   G.noted = true;
   const m = mastery(letter);
   P.letters[letter] = Math.round((ok ? m + (1 - m) * 0.3 : m * 0.55) * 1000) / 1000;
+  const c = P.counts[letter] || [0, 0];
+  P.counts[letter] = [c[0] + 1, c[1] + (ok ? 1 : 0)];
   if (P.auto) {
     P.hist.push(ok);
     if (P.hist.length > 10) P.hist.shift();
@@ -182,6 +194,13 @@ function unlockSticker(word) {
   if (P.stickers.includes(word)) return false;
   P.stickers.push(word);
   G.newStickers.push(word);
+  // Album-Seite voll? Einmalig feiern
+  const group = GROUPS.find(g => g.id === GROUP_OF[word]);
+  if (group.words.every(([w]) => P.stickers.includes(w))) {
+    G.newBadges.push(group.name);
+    floatText(W / 2, 205, `🏅 ${group.name} komplett!`, '#ffd84f', 36);
+    Sound.play('record');
+  }
   saveProfile();
   return true;
 }
@@ -195,28 +214,8 @@ function unlockRandomSticker() {
 }
 
 // ---------- Aufgaben ----------
-// zwei falsche Buchstaben: Vokal ↔ Vokal, bei Konsonanten gern verwechselbare Paare (B/D, M/N …).
-// Ein Buchstabe, den das Kind früher schon einmal mit diesem verwechselt hat, kommt bevorzugt wieder.
-function distractors(word, idx) {
-  const answer = word[idx];
-  const base = answer === 'Ä' ? 'A' : answer === 'Ö' ? 'O' : answer === 'Ü' ? 'U' : answer;
-  const pool = [];
-  if (VOWELS.includes(base)) pool.push(...VOWELS);
-  else {
-    for (const g of CONFUSABLE) if (g.includes(base)) pool.push(...g, ...g);
-    pool.push(...CONSONANTS);
-  }
-  const prefer = shuffle((P.conf[answer] || []).slice()).slice(0, 1);
-  const out = [];
-  for (const c of prefer.concat(shuffle(pool))) {
-    if (c === answer || c === base || out.includes(c)) continue;
-    const alt = word.slice(0, idx) + c + word.slice(idx + 1);
-    if (WORDSET.has(alt)) continue;      // sonst gäbe es zwei richtige Wörter
-    out.push(c);
-    if (out.length === 2) break;
-  }
-  return out;
-}
+// Falsche Antworten (Logik in words.js); früher verwechselte Antworten dieses Kindes kommen bevorzugt wieder
+const distractors = (word, from, len) => makeDistractors(word, from, len, P.conf[word.slice(from, from + len)] || []);
 
 function weightedPick(cands) {
   let r = Math.random() * cands.reduce((sum, c) => sum + c.wt, 0);
@@ -227,17 +226,18 @@ function weightedPick(cands) {
 const recent = [];
 function makeTask() {
   const { gaps, lens } = activeConfig();
-  let pool = WORDS.filter(([w]) => lens.includes(lengthClass(w)) && gapPositions(w, gaps).length);
+  let pool = WORDS.filter(([w]) => lens.includes(lengthClass(w)) && gapSpans(w, gaps).length);
   const fresh = pool.filter(([w]) => !recent.includes(w));
   if (fresh.length) pool = fresh;
   const cands = [];
   for (const [word, emoji] of pool)
-    for (const idx of gapPositions(word, gaps)) cands.push({ word, emoji, idx, wt: 0.4 + 2.2 * (1 - mastery(word[idx])) });
-  const { word, emoji, idx } = weightedPick(cands);
+    for (const span of gapSpans(word, gaps))
+      cands.push({ word, emoji, span, wt: 0.4 + 2.2 * (1 - mastery(word.slice(span.from, span.from + span.len))) });
+  const { word, emoji, span } = weightedPick(cands);
   recent.push(word);
   if (recent.length > 12) recent.shift();
-  const answer = word[idx];
-  return { word, emoji, idx, answer, answers: shuffle([answer, ...distractors(word, idx)]) };
+  const { from, len } = span, answer = word.slice(from, from + len);
+  return { word, emoji, from, len, answer, answers: shuffle([answer, ...distractors(word, from, len)]) };
 }
 
 // ---------- Spielzustand ----------
@@ -250,7 +250,7 @@ const G = {
   balloons: [], golds: [], bullets: [], parts: [], texts: [],
   hero: { y: 320, targetY: null, cool: 0, blink: 0, dead: false },
   hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0,
-  errors: 0, done: 0, noted: false, taskErr: false, newStickers: [],
+  errors: 0, done: 0, noted: false, taskErr: false, newStickers: [], newBadges: [],
   speed: 22, shake: 0, time: 0,
 };
 
@@ -282,7 +282,7 @@ function startGame(mode = 'free') {
     mode, state: 'play', phase: 'fly', phaseT: 0, task: null,
     balloons: [], golds: [], bullets: [], parts: [], texts: [],
     hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0, errors: 0, done: 0,
-    shake: 0, aim: null, newStickers: [], noted: false, taskErr: false,
+    shake: 0, aim: null, newStickers: [], newBadges: [], noted: false, taskErr: false,
   });
   Object.assign(G.hero, { y: 320, targetY: null, cool: 0.3, blink: 0, dead: false });
   showOverlay(null);
@@ -366,6 +366,7 @@ function hitBalloon(b) {
   } else {
     const seen = P.conf[t.answer] || [];
     P.conf[t.answer] = [b.letter, ...seen.filter(x => x !== b.letter)].slice(0, 3);
+    P.confN[`${t.answer}>${b.letter}`] = (P.confN[`${t.answer}>${b.letter}`] || 0) + 1;
     saveProfile();
     pop(b, ['#999999', '#bbbbbb', '#777777'], 20, '💨');
     floatText(b.x, b.y - 10, 'Ups!', '#ff6b8a', 44);
@@ -436,7 +437,10 @@ function showResult(title, mode, score, stats, best) {
   $('overScore').textContent = score;
   $('overStats').textContent = stats;
   $('overBest').textContent = best;
-  $('overStickers').textContent = G.newStickers.length ? `🆕 Neue Sticker: ${G.newStickers.map(w => EMOJI_OF[w]).join(' ')}` : '';
+  const parts = [];
+  if (G.newStickers.length) parts.push(`🆕 Neue Sticker: ${G.newStickers.map(w => EMOJI_OF[w]).join(' ')}`);
+  if (G.newBadges.length) parts.push(`🏅 Seite komplett: ${G.newBadges.join(', ')}`);
+  $('overStickers').textContent = parts.join(' · ');
   G.overAt = performance.now();
   showOverlay('over');
 }
@@ -499,7 +503,7 @@ function toMenu() {
 }
 
 function showOverlay(id) {
-  for (const o of ['title', 'settings', 'album', 'pause', 'over']) $(o).classList.toggle('hidden', o !== id);
+  for (const o of ['title', 'settings', 'album', 'parent', 'pause', 'over']) $(o).classList.toggle('hidden', o !== id);
 }
 
 // ---------- Effekte ----------
@@ -833,7 +837,7 @@ function drawBalloon(b) {
   }
   if (b.gift) emoji('🎁', 0, 2, 50);
   else {
-    ctx.font = `900 64px ${TEXT_FONT}`;
+    ctx.font = `900 ${b.letter.length > 2 ? 40 : b.letter.length > 1 ? 50 : 64}px ${TEXT_FONT}`;
     ctx.lineJoin = 'round';
     ctx.lineWidth = 8;
     ctx.strokeStyle = c.dark;
@@ -867,19 +871,24 @@ function drawHud() {
     ctx.font = `900 54px ${TEXT_FONT}`;
     for (let i = 0; i < n; i++) {
       const x = x0 + i * (TILE_W + TILE_GAP), cx = x + TILE_W / 2, cy = py + panelH / 2;
-      if (i === t.idx) {
-        ctx.fillStyle = solved ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.22)';
-        roundRect(x, cy - 33, TILE_W, 66, 12);
-        ctx.fill();
-        if (!solved) {
-          ctx.strokeStyle = `rgba(255,216,79,${0.6 + Math.sin(G.time * 6) * 0.4})`;
-          ctx.lineWidth = 4;
-          ctx.stroke();
-          ctx.fillStyle = '#ffd84f';
-          ctx.fillText('?', cx, cy + 3);
-        } else {
+      if (i >= t.from && i < t.from + t.len) {
+        if (i === t.from) {
+          // Lücke: bei Lauten ein breites Feld über alle fehlenden Buchstaben
+          const gw = t.len * TILE_W + (t.len - 1) * TILE_GAP;
+          ctx.fillStyle = solved ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.22)';
+          roundRect(x, cy - 33, gw, 66, 12);
+          ctx.fill();
+          if (!solved) {
+            ctx.strokeStyle = `rgba(255,216,79,${0.6 + Math.sin(G.time * 6) * 0.4})`;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.fillStyle = '#ffd84f';
+            ctx.fillText('?', x + gw / 2, cy + 3);
+          }
+        }
+        if (solved) {
           ctx.fillStyle = color;
-          ctx.fillText(t.answer, cx, cy + 3);
+          ctx.fillText(t.word[i], cx, cy + 3);
         }
       } else {
         ctx.fillStyle = '#ffffff';
@@ -1049,20 +1058,66 @@ for (const av of AVATARS) {
   $('avatarRow').appendChild(b);
 }
 
+let albumCat = 'all';
 function renderAlbum() {
   $('albumTitle').textContent = `📒 Meine Sticker ${P.stickers.length}/${WORDS.length}`;
+  const have = list => list.filter(([w]) => P.stickers.includes(w)).length;
+  // Themen-Seiten: eine volle Seite bekommt einen goldenen Rahmen
+  const tabs = $('albumTabs');
+  tabs.textContent = '';
+  const tab = (id, icon, name, list) => {
+    const got = have(list), full = got === list.length;
+    const b = document.createElement('button');
+    b.className = full && id !== 'all' ? 'chip small done' : 'chip small';
+    b.textContent = `${icon} ${name} ${got}/${list.length}${full && id !== 'all' ? ' ⭐' : ''}`;
+    b.setAttribute('aria-pressed', albumCat === id);
+    b.addEventListener('click', () => { albumCat = id; Sound.play('click'); renderAlbum(); });
+    tabs.appendChild(b);
+  };
+  tab('all', '📒', 'Alle', WORDS);
+  for (const g of GROUPS) tab(g.id, g.icon, g.name, g.words);
+  const group = GROUPS.find(g => g.id === albumCat);
   const grid = $('albumGrid');
   grid.textContent = '';
-  for (const [word, emojiChar] of WORDS) {
+  for (const [word, emojiChar] of group ? group.words : WORDS) {
     const got = P.stickers.includes(word);
+    const full = GROUPS.find(g => g.id === GROUP_OF[word]).words.every(([w]) => P.stickers.includes(w));
     const tile = document.createElement('button'), e = document.createElement('span'), name = document.createElement('small');
-    tile.className = got ? 'stk' : 'stk locked';
+    tile.className = (got ? 'stk' : 'stk locked') + (full ? ' gold' : '');
     e.textContent = emojiChar;
     name.textContent = got ? word : '?';
     tile.append(e, name);
     if (got) tile.addEventListener('click', () => Sound.say(word));   // Antippen spricht das Wort
     grid.appendChild(tile);
   }
+}
+
+// ---------- Eltern-Ansicht ----------
+// Pro Buchstabe/Laut: Sicherheit (rot → grün), richtig/versucht, dazu die häufigsten Verwechslungen
+const LETTERS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'Ä', 'Ö', 'Ü'];
+let resetArmed = null;
+function renderParent() {
+  $('parentTitle').textContent = `👪 Lernstand ${profileId}`;
+  const d = P.daily, streak = d.last === dateKey() || d.last === yesterdayKey() ? d.streak : 0;
+  $('parentInfo').textContent = `${P.auto ? `Stufe ${P.level} von ${LEVELS.length}` : 'Eigene Auswahl'} · 📒 ${P.stickers.length}/${WORDS.length} Sticker · 🔥 ${streak} Tage in Folge`;
+  const grid = $('parentGrid');
+  grid.textContent = '';
+  const sounds = Object.keys(P.counts).filter(k => k.length > 1).sort();
+  for (const k of LETTERS.concat(sounds)) {
+    const c = P.counts[k], tile = document.createElement('div'), big = document.createElement('b'), small = document.createElement('small');
+    tile.className = k.length > 1 ? 'ptile wide' : 'ptile';
+    tile.style.background = c ? `hsl(${Math.round(mastery(k) * 120)} 55% 30%)` : 'rgba(255,255,255,0.1)';
+    big.textContent = k;
+    small.textContent = c ? `${c[1]}/${c[0]}` : '–';
+    tile.append(big, small);
+    grid.appendChild(tile);
+  }
+  const top = Object.entries(P.confN).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  $('parentConf').textContent = top.length
+    ? `Oft verwechselt (gesucht → gewählt): ${top.map(([k, n]) => `${k.replace('>', '→')} ${n}×`).join(' · ')}`
+    : 'Noch keine Verwechslungen aufgezeichnet.';
+  $('btnReset').textContent = '🗑️ Profil zurücksetzen';
+  resetArmed = null;
 }
 
 // ---------- Eingabe ----------
@@ -1073,6 +1128,23 @@ $('btnSettings').addEventListener('click', () => { updateSettings(); showOverlay
 $('btnSettingsBack').addEventListener('click', () => { updateTitle(); showOverlay('title'); });
 $('btnAlbum').addEventListener('click', () => { renderAlbum(); showOverlay('album'); });
 $('btnAlbumBack').addEventListener('click', () => showOverlay('title'));
+$('btnParent').addEventListener('click', () => { renderParent(); showOverlay('parent'); });
+$('btnParentBack').addEventListener('click', () => { updateSettings(); showOverlay('settings'); });
+// Zurücksetzen braucht zwei Antipper hintereinander, damit es nicht versehentlich passiert
+$('btnReset').addEventListener('click', () => {
+  if (!resetArmed) {
+    $('btnReset').textContent = '⚠️ Wirklich löschen? Nochmal tippen';
+    resetArmed = setTimeout(() => { resetArmed = null; $('btnReset').textContent = '🗑️ Profil zurücksetzen'; }, 4000);
+    return;
+  }
+  clearTimeout(resetArmed);
+  resetArmed = null;
+  try { localStorage.removeItem(profileKey(profileId)); } catch (e) { /* egal */ }
+  loadProfile(profileId);
+  updateTitle();
+  updateSettings();
+  showOverlay('title');
+});
 $('btnMenu').addEventListener('click', toMenu);
 $('btnResume').addEventListener('click', resume);
 $('btnPauseMenu').addEventListener('click', toMenu);
@@ -1215,6 +1287,7 @@ const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) ||
 $('installHint').hidden = standalone || !ios;
 
 // ---------- Start ----------
+if (document.fonts) { document.fonts.load('900 40px Andika'); document.fonts.load('400 20px Andika'); }
 // Emoji-Bilder vorladen (Wörter, Oberfläche) und Emojis in Seitentexten ersetzen, auch wenn sie später gesetzt werden
 for (const [, e] of WORDS) emojiBitmap(e);
 for (const e of ['🎡', '🎠', '🎪', '☁️', '❤️', '⭐', '🔥', '🌟', '✨', '💨', '🎁', '💫', '🔈', '🎓', ...AVATARS]) emojiBitmap(e);

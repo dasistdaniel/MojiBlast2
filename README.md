@@ -30,8 +30,10 @@ Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (🚂 `? U G`). 
 ## Profile, Lernstand und Sticker
 
 - **Profile:** 6 Tier-Emojis (🦊 🐻 🐱 🐰 🐼 🦄). Jedes Kind hat eigene Einstellungen, Rekorde, Sticker und Lernstand, gespeichert im Browser.
-- **🤖 Automatik:** Das Spiel merkt sich pro Buchstabe, wie sicher das Kind ist. Schwache Buchstaben kommen öfter, und früher verwechselte Buchstaben tauchen als falsche Ballons wieder auf. Bei 9 von 10 richtig geht es eine Stufe hoch (von „Anfang, kurze Wörter“ bis „alles“), bei höchstens 5 von 10 wieder runter.
-- **📒 Sticker:** Jedes richtig gelöste Wort schaltet sein Emoji im Album frei (noch gesperrte zeigen nur den Schatten). Im Album Sticker antippen = Wort vorlesen.
+- **🤖 Automatik:** Das Spiel merkt sich pro Buchstabe, wie sicher das Kind ist. Schwache Buchstaben kommen öfter, und früher verwechselte Buchstaben tauchen als falsche Ballons wieder auf. Bei 9 von 10 richtig geht es eine Stufe hoch (von „Anfang, kurze Wörter“ über „Laute“ bis „alles“, 9 Stufen), bei höchstens 5 von 10 wieder runter.
+- **📒 Sticker:** Jedes richtig gelöste Wort schaltet sein Emoji im Album frei (noch gesperrte zeigen nur den Schatten). Das Album hat eine Seite pro Thema (Tiere, Essen, Fahrzeuge, Natur, Dinge, Körper); eine volle Seite bekommt einen goldenen Rahmen und eine 🏅 Meldung. Sticker antippen = Wort vorlesen.
+- **Laute:** Ab Stufe 8 (oder per Einstellung „Laute“) fehlt ein ganzer Laut wie SCH, AU, EI, IE, EU oder CK. Die Ballons zeigen dann Lautgruppen (z. B. AU – EU – AI).
+- **👪 Für Eltern** (⚙️ Einstellungen): zeigt pro Buchstabe und Laut, wie sicher das Kind ist (rot → grün, richtig/versucht), die häufigsten Verwechslungen und erlaubt das Zurücksetzen des Profils.
 - **🎁 Goldene Ballons:** Ab und zu schwebt einer zwischen den Bahnen vorbei. Abschießen bringt einen Bonus-Sticker und Punkte, Verpassen kostet nichts.
 
 ## Steuerung
@@ -56,11 +58,11 @@ Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (🚂 `? U G`). 
 ## Einstellungen (⚙️ auf dem Titelbildschirm)
 
 - **🤖 Automatisch** (Standard) oder eigene Auswahl:
-- **Wo fehlt der Buchstabe?** Anfang · Mitte · Ende (kombinierbar)
+- **Wo fehlt der Buchstabe?** Anfang · Mitte · Ende · Laute (kombinierbar)
 - **Wörter:** kurz (3–4 Buchstaben) · mittel (5–6) · lang (7+)
 - **🗣️ Vorlesen** an/aus
 
-Laute wie SCH, CH, AU, EI, IE und Doppelbuchstaben (LL, FF …) werden nie auseinandergerissen. Falsche Buchstaben sind Verwechsler (B/D, M/N, E/F …) bzw. andere Vokale.
+Bei einzelnen Buchstaben werden Laute wie SCH, CH, AU, EI, IE und Doppelbuchstaben (LL, FF …) nie auseinandergerissen; im Modus „Laute“ fehlt dagegen der ganze Laut. Falsche Buchstaben sind Verwechsler (B/D, M/N, E/F …) bzw. andere Vokale.
 
 ## Technik
 
@@ -69,6 +71,8 @@ Laute wie SCH, CH, AU, EI, IE und Doppelbuchstaben (LL, FF …) werden nie ausei
 - `game.js` – Spiellogik, Aufgabengenerator, Zeichnen auf dem Canvas
 - `audio.js` – Soundeffekte, Jahrmarkt-Musik (WebAudio) und Wort-Aufnahmen
 - `tools/gen_voice.py` – erzeugt die Wort-Aufnahmen (`pip install edge-tts`, deutsche Stimme)
+- `fonts/` – Schrift Andika (SIL OFL), für Leseanfänger gestaltet: `a` und `g` einstöckig, `b`/`d` und `I`/`l` gut unterscheidbar; selbst gehostet, also offline und ohne Google-Server
+- `tools/check.mjs` – prüft Wortliste, Aufnahmen, Emoji-Bilder, Aufgabenlogik und Dateien (läuft als Pre-Commit-Hook: `node tools/check.mjs`)
 - `emoji/` – alle Emojis als PNG (Noto Emoji von Google, Apache 2.0, siehe `emoji/LICENSE`), damit sie auf jedem Gerät gleich aussehen
 - `tools/get_emojis.mjs` – lädt die Emoji-Bilder (`node tools/get_emojis.mjs`), `tools/gen_voice.py` erzeugt die Wort-Aufnahmen
 - `sw.js`, `manifest.json`, `icons/` – PWA

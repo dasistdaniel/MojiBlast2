@@ -15,6 +15,8 @@ const FILES = [
   'audio.js',
   'game.js',
   'manifest.json',
+  'fonts/andika-400.woff2',
+  'fonts/andika-700.woff2',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',

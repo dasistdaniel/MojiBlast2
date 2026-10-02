@@ -6,7 +6,7 @@ import edge_tts
 VOICE, RATE = 'de-DE-AmalaNeural', '-15%'
 root = pathlib.Path(__file__).resolve().parent.parent
 src = (root / 'words.js').read_text(encoding='utf-8')
-words = re.findall(r"\['([A-ZÄÖÜ]+)',", src[src.index('const WORDS = ['):src.index('];')])
+words = re.findall(r"\['([A-ZÄÖÜ]+)',", src[src.index('const GROUPS = ['):src.index('const WORDS =')])
 
 def slug(w):
     return w.lower().replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue')

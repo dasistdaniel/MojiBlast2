@@ -1,6 +1,9 @@
 #!/bin/sh
-# Setzt bei jedem Commit eine neue Versionsnummer an CSS/JS in index.html,
-# damit Browser nach einem Update nicht alte Dateien aus dem Cache verwenden.
+# 1) Wortliste, Aufnahmen, Emoji-Bilder und Aufgabenlogik pruefen (bricht bei Fehlern ab)
+if command -v node >/dev/null 2>&1; then
+  node tools/check.mjs || { echo "Commit abgebrochen: node tools/check.mjs meldet Fehler"; exit 1; }
+fi
+# 2) Neue Versionsnummer an CSS/JS in index.html, damit Browser nach einem Update keine alten Dateien aus dem Cache laden
 v=$(date +%Y%m%d%H%M%S)
 sed -i -E "s/(style\.css|words\.js|audio\.js|game\.js)\?v=[0-9]+/\1?v=$v/g" index.html
 git add index.html

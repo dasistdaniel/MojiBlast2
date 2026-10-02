@@ -1,3 +1,7 @@
+/* Andika (SIL OFL): für Leseanfänger gestaltete Schrift, selbst gehostet */
+@font-face { font-family: Andika; font-weight: 400; font-display: swap; src: url(fonts/andika-400.woff2) format('woff2'); }
+@font-face { font-family: Andika; font-weight: 700 900; font-display: swap; src: url(fonts/andika-700.woff2) format('woff2'); }
+
 /* MojiBlast 2 – Layout: 16:9-Bühne, Overlays skalieren mit der Bühnenhöhe (cqh) */
 
 :root {
@@ -17,7 +21,7 @@ html, body {
   height: 100%;
   background: var(--bg);
   color: var(--text);
-  font-family: "Arial Rounded MT Bold", "Segoe UI", "Trebuchet MS", system-ui, sans-serif;
+  font-family: Andika, "Arial Rounded MT Bold", "Segoe UI", "Trebuchet MS", system-ui, sans-serif;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
@@ -236,3 +240,23 @@ h2 {
 
 /* ---------- Emoji-Bilder ---------- */
 .emo { height: 1.15em; width: 1.15em; vertical-align: -0.2em; object-fit: contain; pointer-events: none; }
+
+/* ---------- Album-Seiten, Eltern-Ansicht ---------- */
+.chip.small { font-size: 2.9cqh; padding: 0.7cqh 1.3cqh; border-radius: 1.6cqh; }
+.chip.done { border-color: var(--yellow); box-shadow: 0 0 1.6cqh rgba(255, 216, 79, 0.5); }
+#albumTabs { gap: 1cqh; }
+#album h2, #parent h2 { font-size: 7cqh; }
+#albumGrid { max-height: 40cqh; }
+.stk.gold { border-color: var(--yellow); box-shadow: 0 0 1.2cqh rgba(255, 216, 79, 0.45); }
+
+#parentGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.8cqh;
+  width: 92%;
+}
+.ptile { width: 9.4cqh; padding: 0.6cqh 0; border-radius: 1.2cqh; line-height: 1.1; }
+.ptile.wide { width: 14cqh; }
+.ptile b { display: block; font-size: 4.4cqh; }
+.ptile small { display: block; font-size: 2.2cqh; color: var(--muted); }
