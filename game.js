@@ -1102,7 +1102,8 @@ function renderParent() {
   $('parentInfo').textContent = `${P.auto ? `Stufe ${P.level} von ${LEVELS.length}` : 'Eigene Auswahl'} · 📒 ${P.stickers.length}/${WORDS.length} Sticker · 🔥 ${streak} Tage in Folge`;
   const grid = $('parentGrid');
   grid.textContent = '';
-  for (const k of LETTERS.concat(Object.keys(SOUND_ALT))) {   // Laute immer zeigen, auch ungespielte
+  for (const k of LETTERS.concat('|', Object.keys(SOUND_ALT))) {   // Laute immer zeigen, auch ungespielte, in eigener Reihe
+    if (k === '|') { const br = document.createElement('div'); br.className = 'pbreak'; grid.appendChild(br); continue; }
     const c = P.counts[k], tile = document.createElement('div'), big = document.createElement('b'), small = document.createElement('small');
     tile.className = k.length > 1 ? 'ptile wide' : 'ptile';
     tile.style.background = c ? `hsl(${Math.round(mastery(k) * 120)} 55% 30%)` : 'rgba(255,255,255,0.1)';
