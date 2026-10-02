@@ -6,7 +6,7 @@ const W = 960, H = 540;                  // logische Spielfläche, wird auf die 
 const LANES = [180, 320, 450];           // Flugbahnen der drei Ballons
 const HERO_X = 90, HERO_MIN = 140, HERO_MAX = 470;
 const HERO_SPEED = 420, BULLET_SPEED = 950, FIRE_COOLDOWN = 0.28;
-const MUZZLE_DX = 66;                    // Mündung der Konfettikanone
+const MUZZLE_DX = 48;                    // Konfetti kommt vorn aus dem Tier
 const BALLOON_RX = 42, BALLOON_RY = 52;
 const STOP_X = 800, ENTER_EASE = 4, HOLD_TIME = 2.2; // Ballons schweben ein und warten, bis das Kind gelesen hat
 const START_HEARTS = 3, MAX_HEARTS = 5, BONUS_EVERY = 10;
@@ -324,7 +324,7 @@ function setPhase(phase, t) { G.phase = phase; G.phaseT = t; }
 
 function shoot() {
   G.hero.cool = FIRE_COOLDOWN;
-  G.bullets.push({ x: HERO_X + MUZZLE_DX, y: G.hero.y + 14, color: pick(CONFETTI) });
+  G.bullets.push({ x: HERO_X + MUZZLE_DX, y: G.hero.y, color: pick(CONFETTI) });
   Sound.play('laser');
 }
 
@@ -543,7 +543,7 @@ function update(dt) {
     if (G.aim && (G.aim.state !== 'fly' || G.phase !== 'fly')) G.aim = null;
     if (dir) { h.targetY = null; G.aim = null; h.y += dir * HERO_SPEED * dt; }
     else {
-      if (G.aim) h.targetY = G.aim.y - 14;   // angetippten Ballon verfolgen (Kanone sitzt etwas tiefer)
+      if (G.aim) h.targetY = G.aim.y;   // angetippten Ballon verfolgen
       if (h.targetY !== null) {
         const d = h.targetY - h.y, step = HERO_SPEED * 1.8 * dt;
         h.y += Math.abs(d) <= step ? d : Math.sign(d) * step;
@@ -551,8 +551,8 @@ function update(dt) {
     }
     h.y = clamp(h.y, HERO_MIN, HERO_MAX);
     h.cool -= dt;
-    // Zielen per Antippen: schießen, sobald die Kanone auf der Höhe des Ballons ist
-    if (G.aim && Math.abs(h.y + 14 - G.aim.y) < 16 && h.cool <= 0) { G.aim = null; shoot(); }
+    // Zielen per Antippen: schießen, sobald das Tier auf der Höhe des Ballons ist
+    if (G.aim && Math.abs(h.y - G.aim.y) < 16 && h.cool <= 0) { G.aim = null; shoot(); }
     // kurzes Antippen wird gemerkt, auch wenn es zwischen zwei Frames endet
     if ((input.fireQueued || input.keyFire || input.touchFire) && h.cool <= 0) { input.fireQueued = false; shoot(); }
   }
@@ -778,17 +778,6 @@ function drawHero() {
   const h = G.hero;
   const y = G.state === 'title' ? 320 + Math.sin(G.time * 2) * 10 : h.y;
   if (h.blink > 0 && Math.floor(h.blink * 12) % 2 === 0) return;
-  // Konfettikanone
-  const kx = HERO_X + 22, ky = y + 6;
-  ctx.fillStyle = '#ff5f7e';
-  roundRect(kx, ky, 46, 20, 6);
-  ctx.fill();
-  ctx.fillStyle = '#ffd84f';
-  ctx.fillRect(kx + 12, ky, 6, 20);
-  ctx.fillRect(kx + 30, ky, 6, 20);
-  ctx.fillStyle = '#3a2a5c';
-  roundRect(kx + 42, ky - 3, 10, 26, 4);
-  ctx.fill();
   // Seitenansicht-Emojis (🦄) schauen nach links und werden gespiegelt, damit sie auf die Ballons blicken
   ctx.save();
   ctx.translate(HERO_X, y);
@@ -1127,7 +1116,7 @@ window.addEventListener('keyup', e => {
   if (KEYS_FIRE.includes(e.code)) input.keyFire = false;
 });
 
-// Ballon antippen/anklicken = Kanone zielt und schießt automatisch.
+// Ballon antippen/anklicken = Tier zielt und schießt automatisch.
 // Sonst Maus: Klicken/Ziehen steuert. Touch: linke Hälfte ziehen = fliegen, rechte Hälfte halten = schießen
 const firePointers = new Set();
 function pointerY(e) {
@@ -1157,7 +1146,7 @@ canvas.addEventListener('pointerdown', e => {
   const target = G.hero.dead ? null : goldAt(pointerX(e), pointerY(e)) || balloonAt(pointerX(e), pointerY(e));
   if (target) {
     G.aim = target;
-    G.hero.targetY = target.y - 14;
+    G.hero.targetY = target.y;
     return;
   }
   canvas.setPointerCapture(e.pointerId);

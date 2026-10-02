@@ -10,10 +10,10 @@
 
 **Buchstaben-Lernspiel auf dem Jahrmarkt** – für Kinder in Klasse 1–2.
 
-Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (🧀 `? Ä S E`). Drei Luftballons mit Buchstaben schweben heran. Schieß den Ballon mit dem richtigen Buchstaben ab!
+Oben steht ein Emoji mit seinem Namen, aber ein Buchstabe fehlt (🚂 `? U G`). Drei Luftballons mit Buchstaben schweben heran. Schieß den Ballon mit dem richtigen Buchstaben ab!
 
 <p align="center">
-  <img src="docs/gameplay.jpg" alt="Spielszene: Fuchs mit Konfettikanone, Wort ?ÄSE, drei Buchstaben-Ballons und ein goldener Geschenk-Ballon" width="100%">
+  <img src="docs/gameplay.jpg" alt="Spielszene: Fuchs, Wort ?UG, drei Buchstaben-Ballons und ein goldener Geschenk-Ballon" width="100%">
 </p>
 
 ## Spielen
