@@ -15,6 +15,10 @@ const GROUPS = [
       ['SCHNECKE', '🐌'], ['SPINNE', '🕷️'], ['PINGUIN', '🐧'], ['SCHWEIN', '🐷'], ['DELFIN', '🐬'], ['OKTOPUS', '🐙'],
       ['KÄNGURU', '🦘'], ['KAMEL', '🐫'], ['RATTE', '🐀'], ['KROKODIL', '🐊'], ['DINO', '🦖'], ['DRACHE', '🐉'],
       ['EINHORN', '🦄'],
+      ['LAMA', '🦙'], ['KÜKEN', '🐤'], ['TAUBE', '🕊️'], ['PFAU', '🦚'], ['PAPAGEI', '🦜'], ['SCHWAN', '🦢'],
+      ['FLAMINGO', '🦩'], ['NASHORN', '🦏'], ['NILPFERD', '🦛'], ['KOALA', '🐨'], ['GORILLA', '🦍'], ['HIRSCH', '🦌'],
+      ['WOLF', '🐺'], ['HUMMER', '🦞'], ['GARNELE', '🦐'], ['SCHMETTERLING', '🦋'], ['AMEISE', '🐜'], ['SKORPION', '🦂'],
+      ['FLEDERMAUS', '🦇'], ['MÜCKE', '🦟'], ['SCHILDKRÖTE', '🐢'], ['SEEHUND', '🦭'],
     ],
   },
   {
@@ -25,6 +29,10 @@ const GROUPS = [
       ['EIS', '🍦'], ['KEKS', '🍪'], ['TORTE', '🎂'], ['KUCHEN', '🍰'], ['MILCH', '🥛'], ['TOMATE', '🍅'],
       ['KAROTTE', '🥕'], ['MAIS', '🌽'], ['PILZ', '🍄'], ['NUDELN', '🍝'], ['HONIG', '🍯'], ['POPCORN', '🍿'],
       ['BONBON', '🍬'], ['ANANAS', '🍍'], ['KIWI', '🥝'],
+      ['BREZEL', '🥨'], ['GURKE', '🥒'], ['ZWIEBEL', '🧅'], ['BROKKOLI', '🥦'], ['ERDNUSS', '🥜'], ['KASTANIE', '🌰'],
+      ['KOKOSNUSS', '🥥'], ['MANGO', '🥭'], ['AVOCADO', '🥑'], ['KARTOFFEL', '🥔'], ['PFANNKUCHEN', '🥞'], ['SUPPE', '🍲'],
+      ['SALAT', '🥗'], ['BURGER', '🍔'], ['POMMES', '🍟'], ['REIS', '🍚'], ['PUDDING', '🍮'], ['DONUT', '🍩'],
+      ['SCHOKOLADE', '🍫'], ['TEE', '🍵'], ['KAFFEE', '☕'], ['SAFT', '🧃'],
     ],
   },
   {
@@ -32,6 +40,8 @@ const GROUPS = [
     words: [
       ['AUTO', '🚗'], ['BUS', '🚌'], ['ZUG', '🚂'], ['BOOT', '⛵'], ['FLUGZEUG', '✈️'], ['RAKETE', '🚀'],
       ['FAHRRAD', '🚲'], ['TRAKTOR', '🚜'],
+      ['SCHIFF', '🚢'], ['TAXI', '🚕'], ['POLIZEI', '🚓'], ['FEUERWEHR', '🚒'], ['HUBSCHRAUBER', '🚁'], ['MOTORRAD', '🏍️'],
+      ['ROLLER', '🛴'], ['UFO', '🛸'], ['ANKER', '⚓'], ['SEILBAHN', '🚡'],
     ],
   },
   {
@@ -39,6 +49,9 @@ const GROUPS = [
     words: [
       ['BAUM', '🌳'], ['TULPE', '🌷'], ['ROSE', '🌹'], ['SONNE', '☀️'], ['MOND', '🌙'], ['STERN', '⭐'],
       ['WOLKE', '☁️'], ['BLITZ', '⚡'], ['FEUER', '🔥'], ['BLUME', '🌸'],
+      ['REGENBOGEN', '🌈'], ['BERG', '⛰️'], ['VULKAN', '🌋'], ['INSEL', '🏝️'], ['WELLE', '🌊'], ['TANNE', '🌲'],
+      ['PALME', '🌴'], ['KAKTUS', '🌵'], ['KLEE', '🍀'], ['SONNENBLUME', '🌻'], ['ERDE', '🌍'], ['KOMET', '☄️'],
+      ['TROPFEN', '💧'], ['SCHNEEMANN', '⛄'], ['REGENSCHIRM', '☂️'],
     ],
   },
   {
@@ -49,12 +62,19 @@ const GROUPS = [
       ['BRILLE', '👓'], ['HUT', '🎩'], ['SOCKE', '🧦'], ['SCHUH', '👟'], ['HOSE', '👖'], ['KLEID', '👗'],
       ['HERZ', '❤️'], ['KERZE', '🕯️'], ['TELEFON', '📞'], ['KAMERA', '📷'], ['GLOCKE', '🔔'], ['BESEN', '🧹'],
       ['ROBOTER', '🤖'], ['GEIST', '👻'], ['BETT', '🛏️'],
+      ['SCHLÜSSEL', '🔑'], ['SCHLOSS', '🔒'], ['HAMMER', '🔨'], ['LUPE', '🔍'], ['MAGNET', '🧲'], ['BATTERIE', '🔋'],
+      ['KOFFER', '🧳'], ['RUCKSACK', '🎒'], ['TASCHE', '👜'], ['RING', '💍'], ['DIAMANT', '💎'], ['POKAL', '🏆'],
+      ['MEDAILLE', '🏅'], ['FLAGGE', '🚩'], ['FERNSEHER', '📺'], ['RADIO', '📻'], ['COMPUTER', '💻'], ['WECKER', '⏰'],
+      ['BRIEF', '✉️'], ['PAKET', '📦'], ['LÖFFEL', '🥄'], ['WÜRFEL', '🎲'], ['PUZZLE', '🧩'], ['TEDDY', '🧸'],
+      ['TROMPETE', '🎺'], ['GEIGE', '🎻'], ['KLAVIER', '🎹'], ['MIKROFON', '🎤'],
     ],
   },
   {
     id: 'koerper', name: 'Körper', icon: '✋',
     words: [
       ['ZAHN', '🦷'], ['NASE', '👃'], ['MUND', '👄'], ['OHR', '👂'], ['AUGE', '👁️'], ['HAND', '✋'],
+      ['BEIN', '🦵'], ['FUSS', '🦶'], ['KNOCHEN', '🦴'], ['GEHIRN', '🧠'], ['ZUNGE', '👅'], ['DAUMEN', '👍'],
+      ['FAUST', '👊'],
     ],
   },
 ];
