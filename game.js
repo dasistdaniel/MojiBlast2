@@ -741,10 +741,10 @@ function drawHero() {
     ctx.save();
     ctx.translate(HERO_X, y);
     ctx.rotate(-0.5);
-    emoji('🦊', 0, 0, 70, 0.8);
+    emoji(profileId, 0, 0, 70, 0.8);
     ctx.restore();
     emoji('💫', HERO_X, y - 44, 34);
-  } else emoji('🦊', HERO_X, y, 70);
+  } else emoji(profileId, HERO_X, y, 70);
 }
 
 function drawBalloon(b) {
