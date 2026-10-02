@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#4b2a8c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MojiBlast 2">
+  <title>MojiBlast 2</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎈</text></svg>">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css?v=20261002100547">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="game"></canvas>
+
+    <div id="hudButtons" class="hidden">
+      <button id="btnMute" class="iconBtn" aria-label="Ton an/aus">🔊</button>
+      <button id="btnPause" class="iconBtn" aria-label="Pause">⏸️</button>
+    </div>
+    <button id="btnFire" class="hidden" aria-label="Schießen">🔥</button>
+
+    <!-- Titelbildschirm -->
+    <div id="title" class="overlay">
+      <h1>Moji<span>Blast</span> 2 🎈</h1>
+      <p class="sub">Welcher Buchstabe fehlt? Schieß den richtigen Ballon ab!</p>
+
+      <div class="group">
+        <div class="label">Wo fehlt der Buchstabe?</div>
+        <div class="row" id="gapButtons">
+          <button class="chip" data-gap="start">Anfang</button>
+          <button class="chip" data-gap="mid">Mitte</button>
+          <button class="chip" data-gap="end">Ende</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label">Wörter</div>
+        <div class="row" id="lenButtons">
+          <button class="chip" data-len="short">kurz</button>
+          <button class="chip" data-len="medium">mittel</button>
+          <button class="chip" data-len="long">lang</button>
+          <button class="chip" id="btnSpeak">🗣️ Vorlesen</button>
+        </div>
+      </div>
+
+      <p class="best" id="titleBest">🏆 Rekord: 0</p>
+      <div class="row">
+        <button id="btnStart" class="big">▶ Start</button>
+        <button id="btnInstall" class="big alt" hidden>📲 Als App</button>
+      </div>
+      <p class="hint" id="installHint" hidden>Als App: im Browser <b>Teilen</b> → <b>„Zum Home-Bildschirm“</b></p>
+      <p class="hint keys">Ballon anklicken – oder ⬆️⬇️ / W S fliegen und Leertaste schießen · R Wort nochmal · M Ton · Esc Pause</p>
+      <p class="hint touch">Ballon antippen – oder links ziehen zum Fliegen und 🔥 zum Schießen · Wort oben antippen = vorlesen</p>
+    </div>
+
+    <!-- Pause -->
+    <div id="pause" class="overlay hidden">
+      <h2>⏸️ Pause</h2>
+      <div class="row">
+        <button id="btnResume" class="big">▶ Weiter</button>
+        <button id="btnPauseMenu" class="big alt">🏠 Menü</button>
+      </div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="over" class="overlay hidden">
+      <h2>🎈 Geschafft!</h2>
+      <p class="mode" id="overMode"></p>
+      <p class="score" id="overScore"></p>
+      <p class="stats" id="overStats"></p>
+      <p class="best" id="overBest"></p>
+      <div class="row">
+        <button id="btnAgain" class="big">🔄 Nochmal</button>
+        <button id="btnMenu" class="big alt">🏠 Menü</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rotate">📱🔄<br>Bitte das Gerät quer halten</div>
+
+  <script src="words.js?v=20261002000000"></script>
+  <script src="audio.js?v=20261002100547"></script>
+  <script src="game.js?v=20261002100547"></script>
+</body>
+</html>
