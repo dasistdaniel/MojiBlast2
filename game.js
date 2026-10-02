@@ -25,6 +25,7 @@ const LEN_NAMES = { short: 'kurze', medium: 'mittlere', long: 'lange' };
 const GAP_ORDER = ['start', 'mid', 'end', 'sound'], LEN_ORDER = ['short', 'medium', 'long'];
 const AVATARS = ['🦊', '🐻', '🐱', '🐰', '🐼', '🦄'];
 const FACES_LEFT = ['🦄'];
+const GOLD_MIN_GAP = 7;                  // mindestens so viele Aufgaben zwischen zwei Geschenk-Ballons
 const DAILY_N = 10;                      // Wörter pro Tagesrunde
 const GOLD = { base: '#ffc93f', light: '#fff2b0', dark: '#c78f0a' };
 // Stufen für den Automatik-Modus: von leicht (Anfang, kurze Wörter) bis alles
@@ -250,7 +251,7 @@ const G = {
   balloons: [], golds: [], bullets: [], parts: [], texts: [],
   hero: { y: 320, targetY: null, cool: 0, blink: 0, dead: false },
   hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0,
-  errors: 0, done: 0, noted: false, taskErr: false, newStickers: [], newBadges: [],
+  errors: 0, done: 0, sinceGold: 0, noted: false, taskErr: false, newStickers: [], newBadges: [],
   speed: 22, shake: 0, time: 0,
 };
 
@@ -290,7 +291,7 @@ function startGame(mode = 'free') {
   Object.assign(G, {
     mode, state: 'play', phase: 'fly', phaseT: 0, task: null,
     balloons: [], golds: [], bullets: [], parts: [], texts: [],
-    hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0, errors: 0, done: 0,
+    hearts: START_HEARTS, score: 0, streak: 0, bestStreak: 0, correct: 0, wrong: 0, errors: 0, done: 0, sinceGold: 0,
     shake: 0, aim: null, newStickers: [], newBadges: [], noted: false, taskErr: false,
   });
   Object.assign(G.hero, { y: 320, targetY: null, cool: 0.3, blink: 0, dead: false });
@@ -323,8 +324,11 @@ function newTask() {
   }));
   G.balloons = leaving.concat(wave);
   // ab und zu schwebt ein goldener Geschenk-Ballon zwischen den Bahnen vorbei (gehört nicht zur Aufgabe)
-  if (!G.golds.length && Math.random() < 0.18)
+  G.sinceGold++;
+  if (!G.golds.length && G.sinceGold >= GOLD_MIN_GAP && Math.random() < 0.15) {
+    G.sinceGold = 0;
     G.golds.push({ x: W + 90, baseY: pick([250, 385]) + rand(-15, 15), y: 250, t: 0, alpha: 1, state: 'fly', gift: true, color: GOLD });
+  }
   G.speed = balloonSpeed();
   G.aim = null;
   Sound.play('whoosh');
